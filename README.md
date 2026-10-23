@@ -7,11 +7,13 @@
 <p align="center">
   <a href="https://github.com/lchqi1998/dsh-n8n-plugin"><img alt="GitHub stars" src="https://img.shields.io/github/stars/lchqi1998/dsh-n8n-plugin?style=flat&logo=github&color=FFD700&label=stars"></a>
   <a href="https://github.com/lchqi1998/dsh-n8n-plugin/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/lchqi1998/dsh-n8n-plugin?style=flat&logo=github&color=0969DA&label=contributors"></a>
-  <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm downloads" src="https://img.shields.io/npm/dt/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=downloads"></a>
+  <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm package" src="https://img.shields.io/npm/v/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=npm"></a>
+  <a href="https://npmmirror.com/package/dsh-n8n-plugin"><img alt="npmmirror weekly downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.npmmirror.com%2Fdownloads%2Fpoint%2Flast-week%2Fdsh-n8n-plugin&query=%24.downloads&style=flat&logo=npm&color=CB3837&label=npmmirror%20weekly&cacheSeconds=3600"></a>
+  <a href="https://socket.dev/npm/package/dsh-n8n-plugin"><img alt="Socket score" src="https://badge.socket.dev/npm/package/dsh-n8n-plugin"></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
-  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-13-8A5CF6">
+  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-15-8A5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-3DA639">
 </p>
 
@@ -27,7 +29,7 @@ English · [中文](README.zh.md)
 
 ## ✨ Why dsh-n8n-plugin
 
-Most n8n integrations have you paste a base URL and an API key into every conversation. This plugin makes n8n a **first-class citizen of DeepSeek Harness**: one settings page, one instance registry, and 13 agent tools that share it.
+Most n8n integrations have you paste a base URL and an API key into every conversation. This plugin makes n8n a **first-class citizen of DeepSeek Harness**: one settings page, one instance registry, and 15 agent tools that share it.
 
 ### One alias away from any environment
 Instances are registered once under **Settings → n8n instances** — an alias (`prod`, `staging`, `local`, …), a base URL and an API key. Every tool call picks its target by alias, so the same instruction works against any environment without repeating credentials.
@@ -46,7 +48,7 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 
 ## 🧩 Agent tools
 
-13 tools, every one of them alias-addressed:
+15 tools, every one of them alias-addressed:
 
 | Tool | Purpose |
 | --- | --- |
@@ -59,7 +61,9 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 | `n8n_workflow_publish` | Publish (activate) / unpublish (deactivate) |
 | `n8n_workflow_validate` | Offline JSON validation, no instance contacted |
 | `n8n_executions` | List executions (filter by workflow id / status) |
-| `n8n_execution_get` | Read one execution with per-node run data |
+| `n8n_execution_get` | Read one execution as a structured view: status, duration, per-node results and error summaries |
+| `n8n_wait_execution` | Poll one execution until it settles (configurable timeout and interval) |
+| `n8n_webhook_call` | Run a workflow on demand through its Webhook trigger; waits for completion by default and returns per-node results |
 | `n8n_tags` | List tags and their ids |
 | `n8n_credentials` | List credential names and types (never secret values) |
 | `n8n_api` | Raw `/api/v1` request (path starts with `/`) |
@@ -126,7 +130,7 @@ A standard double-sided DSH package: a host half (`lib/`) and a browser half (`c
 ```
 Settings page (browser)                        Agent (model)
   │                                              │
-  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 13 × n8n_* tools
+  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 15 × n8n_* tools
   │  /api/dsh-n8n-plugin/*    │                  │
   ▼                           ▼                  ▼
 ┌───────────── loopback fence (127.0.0.1 / ::1 only) ─────────────┐
@@ -137,7 +141,7 @@ Settings page (browser)                        Agent (model)
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-- **Host half** — `lib/index.js` registers routes, the 13 tools and the optional prompt section from one `apply()`; `lib/store.js` owns the registry (atomic writes, `0600`, corrupt-file quarantine); `lib/n8n.js` is the API v1 client (30 s timeout, merged abort signals, `accept-encoding: identity`); `lib/http.js` enforces the loopback fence; `lib/mount-once.js` guarantees one mount per package and profile.
+- **Host half** — `lib/index.js` registers routes, the 15 tools and the optional prompt section from one `apply()`; `lib/store.js` owns the registry (atomic writes, `0600`, corrupt-file quarantine); `lib/n8n.js` is the API v1 client (30 s timeout, merged abort signals, `accept-encoding: identity`) plus a direct webhook caller and an execution wait poller; `lib/http.js` enforces the loopback fence; `lib/mount-once.js` guarantees one mount per package and profile.
 - **Browser half** — `client/index.js` renders the Settings section and talks to the same routes, so GUI and agent always agree.
 - **Prompt guidance** — `lib/guidance.js` emits the system-prompt section; it renders only when n8n_* tools are visible in the session.
 
@@ -175,9 +179,9 @@ Layout:
 ```
 lib/index.js             plugin entry (Config, apply, route/tool/prompt registration)
 lib/store.js             instance store (atomic write, 0600, corrupt-file quarantine)
-lib/n8n.js               n8n public API v1 client
+lib/n8n.js               n8n public API v1 client (+ direct webhook call, execution wait)
 lib/routes.js            /api/dsh-n8n-plugin routes (loopback fence)
-lib/tool-specs.js        13 agent tool definitions (parameters, output schema, render, execute)
+lib/tool-specs.js        15 agent tool definitions (parameters, output schema, render, execute)
 lib/tools.js             the only defineTool() adapter over those definitions
 lib/render.js            pure model-facing formatters used by the render hooks
 lib/workflow-validate.js offline workflow validation
@@ -206,13 +210,14 @@ npm publish              # publishes to the default registry once you are logged
 
 ## 🤖 Model experience
 
-- 13 `n8n_*` tools (table above); `n8n_instances` and `n8n_workflow_validate` are the safe, read-mostly entry points.
+- 15 `n8n_*` tools (table above); `n8n_instances` and `n8n_workflow_validate` are the safe, read-mostly entry points.
+- A run loop in one chain: `n8n_workflow_publish` → `n8n_webhook_call` (trigger + wait) → `n8n_execution_get` to re-inspect — deploy, run, verify.
 - An optional system-prompt section (`announceToAgent`) teaches the alias convention and points at `knowledge/workflow-guide.md` for the full workflow-JSON rules.
 - Destructive operations (publish, delete) are gated by an explicit confirm-with-the-user-first rule in the guidance.
 
 ## ⚠️ Known limitations
 
-- The n8n public API has no cross-version stable "run workflow manually" endpoint, so this plugin exposes no `n8n_run`. Trigger a webhook workflow over HTTP or run it in the n8n UI, then inspect with `n8n_executions` / `n8n_execution_get`.
+- The n8n public API still has no cross-version stable "run workflow manually" endpoint; `n8n_webhook_call` fills that gap through the Webhook trigger — the workflow needs a Webhook node and must be published (or use `mode:"test"` while the editor listens for test events). Workflows without a Webhook trigger must be run in the n8n UI, then inspected with `n8n_executions` / `n8n_execution_get`.
 - Public-API endpoints and fields differ across n8n versions (for example `publish/unpublish` alongside `activate/deactivate`, and updates that may want a `versionId`). The plugin falls back on a 404 for publishing; other differences are reachable through `n8n_api`.
 - A self-signed instance certificate is rejected by the DSH host's TLS validation; give the instance a trusted certificate or use internal HTTP.
 - One mount per profile: the built-in single-instance guard deduplicates a second row for the same package.

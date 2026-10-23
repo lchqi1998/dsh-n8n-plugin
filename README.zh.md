@@ -7,11 +7,13 @@
 <p align="center">
   <a href="https://github.com/lchqi1998/dsh-n8n-plugin"><img alt="GitHub stars" src="https://img.shields.io/github/stars/lchqi1998/dsh-n8n-plugin?style=flat&logo=github&color=FFD700&label=stars"></a>
   <a href="https://github.com/lchqi1998/dsh-n8n-plugin/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/lchqi1998/dsh-n8n-plugin?style=flat&logo=github&color=0969DA&label=contributors"></a>
-  <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm downloads" src="https://img.shields.io/npm/dt/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=downloads"></a>
+  <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm package" src="https://img.shields.io/npm/v/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=npm"></a>
+  <a href="https://npmmirror.com/package/dsh-n8n-plugin"><img alt="npmmirror weekly downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.npmmirror.com%2Fdownloads%2Fpoint%2Flast-week%2Fdsh-n8n-plugin&query=%24.downloads&style=flat&logo=npm&color=CB3837&label=npmmirror%20%E5%91%A8%E4%B8%8B%E8%BD%BD&cacheSeconds=3600"></a>
+  <a href="https://socket.dev/npm/package/dsh-n8n-plugin"><img alt="Socket score" src="https://badge.socket.dev/npm/package/dsh-n8n-plugin"></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
-  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-13-8A5CF6">
+  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-15-8A5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-3DA639">
 </p>
 
@@ -27,7 +29,7 @@
 
 ## ✨ 为什么选它
 
-大多数 n8n 集成方式，是把实例地址和 API Key 反复粘进对话。本插件让 n8n 成为 DeepSeek Harness 的一等公民：一个设置页、一份实例清单、13 个共享它的 Agent 工具。
+大多数 n8n 集成方式，是把实例地址和 API Key 反复粘进对话。本插件让 n8n 成为 DeepSeek Harness 的一等公民：一个设置页、一份实例清单、15 个共享它的 Agent 工具。
 
 ### 一个别名，直达任意环境
 实例只需在 **设置 → n8n 实例** 登记一次——别名（`prod` / `staging` / `local`…）、实例地址、API Key。所有工具按别名指定目标实例，同一段指令可以指向任何环境，无需重复粘贴凭据。
@@ -46,7 +48,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 
 ## 🧩 Agent 工具
 
-13 个工具，全部按别名寻址：
+15 个工具，全部按别名寻址：
 
 | 工具 | 作用 |
 | --- | --- |
@@ -59,7 +61,9 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_workflow_publish` | 发布（activate）/ 取消发布（deactivate） |
 | `n8n_workflow_validate` | 离线校验工作流 JSON，不访问实例 |
 | `n8n_executions` | 列出执行记录（可按 workflowId / status 过滤） |
-| `n8n_execution_get` | 读取单次执行及每个节点的输入输出 |
+| `n8n_execution_get` | 读取单次执行的结构化视图：状态、耗时、逐节点结果与错误摘要 |
+| `n8n_wait_execution` | 轮询等待一条执行记录结束（可设超时与轮询间隔） |
+| `n8n_webhook_call` | 经 Webhook 触发器手动运行工作流，默认等待执行结束并返回逐节点结果 |
 | `n8n_tags` | 列出标签及 id |
 | `n8n_credentials` | 列出凭证名称与类型（不含密钥值） |
 | `n8n_api` | 通用 `/api/v1` 请求（路径需以 `/` 开头） |
@@ -126,7 +130,7 @@ dsh plugin --profile web add link:<本包所在路径>
 ```
 设置页（浏览器）                                 Agent（模型）
   │                                              │
-  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 13 个 n8n_* 工具
+  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 15 个 n8n_* 工具
   │  /api/dsh-n8n-plugin/*    │                  │
   ▼                           ▼                  ▼
 ┌─────────── 回环围栏（仅 127.0.0.1 / ::1）─────────────────┐
@@ -137,7 +141,7 @@ dsh plugin --profile web add link:<本包所在路径>
 └───────────────────────────────────────────────────────────┘
 ```
 
-- **宿主半边**——`lib/index.js` 在一个 `apply()` 里注册路由、13 个工具与可选提示段；`lib/store.js` 管理实例清单（原子写、`0600`、损坏隔离）；`lib/n8n.js` 是 API v1 客户端（30 秒超时、合并中止信号、`accept-encoding: identity`）；`lib/http.js` 落实回环围栏；`lib/mount-once.js` 保证同一 package/profile 只挂载一份。
+- **宿主半边**——`lib/index.js` 在一个 `apply()` 里注册路由、15 个工具与可选提示段；`lib/store.js` 管理实例清单（原子写、`0600`、损坏隔离）；`lib/n8n.js` 是 API v1 客户端（30 秒超时、合并中止信号、`accept-encoding: identity`），外加 Webhook 直连调用与执行轮询等待；`lib/http.js` 落实回环围栏；`lib/mount-once.js` 保证同一 package/profile 只挂载一份。
 - **浏览器半边**——`client/index.js` 渲染设置分区，走同一组路由，GUI 与 Agent 永远一致。
 - **提示词引导**——`lib/guidance.js` 生成系统提示段；仅当会话中 n8n_* 工具可见时才渲染。
 
@@ -175,9 +179,9 @@ npm run check             # 语法检查（全部源文件）
 ```
 lib/index.js             插件入口（Config、apply、路由/工具/提示段注册）
 lib/store.js             实例存储（原子写、0600、损坏文件隔离）
-lib/n8n.js               n8n 公开 API v1 客户端
+lib/n8n.js               n8n 公开 API v1 客户端（含 webhook 直连与执行等待）
 lib/routes.js            /api/dsh-n8n-plugin 路由（回环围栏）
-lib/tool-specs.js        13 个 Agent 工具定义（参数、输出 schema、render、execute）
+lib/tool-specs.js        15 个 Agent 工具定义（参数、输出 schema、render、execute）
 lib/tools.js             唯一的 defineTool() 适配层
 lib/render.js            纯函数渲染器（供各 render 钩子复用）
 lib/workflow-validate.js 离线工作流校验
@@ -206,13 +210,14 @@ npm publish              # 已登录 npm 时发布（未 scoped 包用默认 reg
 
 ## 🤖 模型体验
 
-- 13 个 `n8n_*` 工具（见上表）；`n8n_instances` 与 `n8n_workflow_validate` 是最安全的只读入口。
+- 15 个 `n8n_*` 工具（见上表）；`n8n_instances` 与 `n8n_workflow_validate` 是最安全的只读入口。
+- 运行闭环：`n8n_workflow_publish` 发布 → `n8n_webhook_call` 触发并等待 → `n8n_execution_get` 复查，一条链路覆盖「部署、运行、验证」。
 - 可选系统提示段（`announceToAgent`）：教 Agent 别名约定，并指向 `knowledge/workflow-guide.md` 获取完整工作流 JSON 规范。
 - 破坏性操作（发布、删除）由提示段中的「先向用户确认」规则把关。
 
 ## ⚠️ 已知限制
 
-- n8n 公开 API 没有跨版本稳定的「手动执行工作流」端点，因此本插件不提供 `n8n_run`。需要手动触发时：给工作流加 Webhook 触发器后用 HTTP 调用，或直接在 n8n 界面执行，再用 `n8n_executions` / `n8n_execution_get` 查看结果。
+- n8n 公开 API 仍没有跨版本稳定的「手动执行工作流」端点；`n8n_webhook_call` 通过 Webhook 触发器补上了这条路径——要求工作流里有 Webhook 节点且已发布（或用 `mode:"test"` 配合编辑器监听测试事件）。不含 Webhook 触发器的工作流，请在 n8n 界面执行，再用 `n8n_executions` / `n8n_execution_get` 查看结果。
 - 不同 n8n 版本的公开 API 端点与字段有差异（例如 `publish/unpublish` 与 `activate/deactivate` 并存、更新可能需要 `versionId`）。插件对发布/取消发布做了 404 回退；其他差异可用 `n8n_api` 直达接口。
 - 实例地址使用自签名证书时会被 DSH 主机的 TLS 校验拒绝（提示证书错误）；请为实例配置受信任证书，或使用内网 HTTP。
 - 一个 profile 只挂载一份本插件（重复行会由内置的 single-instance 守卫去重）。
