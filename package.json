@@ -1,7 +1,7 @@
 {
   "name": "dsh-n8n-plugin",
   "version": "0.1.0",
-  "description": "n8n workflow operations for the DeepSeek Harness Web GUI: a GUI instance registry with user-chosen aliases (base URL + API key per n8n instance, stored in ~/.dsh/dsh-n8n-plugin.json) plus 13 agent tools (n8n_instances, n8n_workflows, n8n_workflow_get/create/update/delete/publish/validate, n8n_executions, n8n_execution_get, n8n_tags, n8n_credentials, n8n_api).",
+  "description": "DeepSeek Harness Web GUI 的 n8n 工作流运维插件：设置页可管理多个 n8n 实例（每个实例一个别名 + 实例地址 + API Key，存储于 ~/.dsh/dsh-n8n-plugin.json），并提供 13 个 Agent 工具（n8n_instances、n8n_workflows、n8n_workflow_get/create/update/delete/publish/validate、n8n_executions、n8n_execution_get、n8n_tags、n8n_credentials、n8n_api）。",
   "icon": "icon.svg",
   "type": "module",
   "engines": {
