@@ -5,6 +5,9 @@ node_modules/
 dist/
 *.tgz
 
+# release notes drafts（发布完即删，不进仓库）
+release-v*.md
+
 # local scratch space
 .tmp/
 
