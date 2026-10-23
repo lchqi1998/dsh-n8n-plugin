@@ -82,7 +82,19 @@
     "workflow",
     "automation"
   ],
+  "author": {
+    "name": "lchqi1998",
+    "url": "https://github.com/lchqi1998"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lchqi1998/dsh-n8n-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lchqi1998/dsh-n8n-plugin/issues"
+  },
+  "homepage": "https://github.com/lchqi1998/dsh-n8n-plugin#readme",
   "publishConfig": {
     "access": "public"
   },
