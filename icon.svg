@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="icon-title">
+  <title id="icon-title">n8n</title>
+  <defs>
+    <linearGradient id="rainbow" gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="468" y2="0">
+      <stop offset="0" stop-color="#FF4757"/>
+      <stop offset="0.17" stop-color="#FF9F1A"/>
+      <stop offset="0.34" stop-color="#FFDD40"/>
+      <stop offset="0.51" stop-color="#2ED573"/>
+      <stop offset="0.68" stop-color="#16C2E8"/>
+      <stop offset="0.85" stop-color="#5A6CF3"/>
+      <stop offset="1" stop-color="#C04BF2"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="509" height="509" rx="114" fill="#000000" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3"/>
+  <g stroke="url(#rainbow)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M62 354 V205 A47 47 0 0 1 156 205 V354"/>
+    <circle cx="256" cy="196" r="38"/>
+    <circle cx="256" cy="312" r="42"/>
+    <path d="M356 354 V205 A47 47 0 0 1 450 205 V354"/>
+  </g>
+</svg>

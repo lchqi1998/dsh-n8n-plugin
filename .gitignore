@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# build / publish artifacts
+dist/
+*.tgz
+
+# local scratch space
+.tmp/
+
+# logs
+*.log
+
+# local secrets
+.env
+.env.*
+
+# stray backups
+*.bak-*
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/

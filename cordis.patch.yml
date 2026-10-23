@@ -1,0 +1,8 @@
+# dsh-n8n-plugin bundle patch: inserts the dual-face plugin row into the web profile
+# roster. The node half (exports ".") runs in the host process (instance store,
+# /api/dsh-n8n-plugin routes, agent tools, prompt section), and the `dsh.client`
+# declaration in package.json makes the browser half (exports "./client")
+# load in the web GUI as the Settings → n8n instances page.
+- insert:
+    - id: n8n
+      name: 'dsh-n8n-plugin'

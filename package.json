@@ -1,0 +1,92 @@
+{
+  "name": "dsh-n8n-plugin",
+  "version": "0.1.0",
+  "description": "n8n workflow operations for the DeepSeek Harness Web GUI: a GUI instance registry with user-chosen aliases (base URL + API key per n8n instance, stored in ~/.dsh/dsh-n8n-plugin.json) plus 13 agent tools (n8n_instances, n8n_workflows, n8n_workflow_get/create/update/delete/publish/validate, n8n_executions, n8n_execution_get, n8n_tags, n8n_credentials, n8n_api).",
+  "icon": "icon.svg",
+  "type": "module",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.2"
+  },
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./client/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.1-rc.2"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-renderer"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.5"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": ">=0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2",
+    "react": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-locale": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-renderer": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-settings": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "files": [
+    "lib/**/*.js",
+    "client/**/*.js",
+    "knowledge",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "README.zh.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "n8n",
+    "workflow",
+    "automation"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "node --check lib/index.js && node --check lib/store.js && node --check lib/n8n.js && node --check lib/routes.js && node --check lib/http.js && node --check lib/render.js && node --check lib/tool-specs.js && node --check lib/tools.js && node --check lib/guidance.js && node --check lib/mount-once.js && node --check lib/workflow-validate.js && node --check client/index.js"
+  }
+}
