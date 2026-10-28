@@ -13,7 +13,7 @@
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
-  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-15-8A5CF6">
+  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-21-8A5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-3DA639">
 </p>
 
@@ -29,7 +29,7 @@ English · [中文](README.zh.md)
 
 ## ✨ Why dsh-n8n-plugin
 
-Most n8n integrations have you paste a base URL and an API key into every conversation. This plugin makes n8n a **first-class citizen of DeepSeek Harness**: one settings page, one instance registry, and 15 agent tools that share it.
+Most n8n integrations have you paste a base URL and an API key into every conversation. This plugin makes n8n a **first-class citizen of DeepSeek Harness**: one settings page, one instance registry, and 21 agent tools that share it.
 
 ### One alias away from any environment
 Instances are registered once under **Settings → n8n instances** — an alias (`prod`, `staging`, `local`, …), a base URL and an API key. Every tool call picks its target by alias, so the same instruction works against any environment without repeating credentials.
@@ -48,7 +48,7 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 
 ## 🧩 Agent tools
 
-15 tools, every one of them alias-addressed:
+21 tools, every one of them alias-addressed:
 
 | Tool | Purpose |
 | --- | --- |
@@ -60,11 +60,17 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 | `n8n_workflow_delete` | Delete a workflow (its triggers stop) |
 | `n8n_workflow_publish` | Publish (activate) / unpublish (deactivate) |
 | `n8n_workflow_validate` | Offline JSON validation, no instance contacted |
+| `n8n_workflow_clone` | Clone a workflow: definition + tags, unpublished by default |
+| `n8n_workflow_tags` | Read or replace a workflow's tags (by tag ids or names) |
 | `n8n_executions` | List executions (filter by workflow id / status) |
 | `n8n_execution_get` | Read one execution as a structured view: status, duration, per-node results and error summaries |
+| `n8n_execution_cancel` | Stop a running execution |
 | `n8n_wait_execution` | Poll one execution until it settles (configurable timeout and interval) |
 | `n8n_webhook_call` | Run a workflow on demand through its Webhook trigger; waits for completion by default and returns per-node results |
 | `n8n_tags` | List tags and their ids |
+| `n8n_tag_create` | Create a tag |
+| `n8n_tag_update` | Rename a tag (every workflow referencing it follows) |
+| `n8n_tag_delete` | Delete a tag (it is removed from every workflow) |
 | `n8n_credentials` | List credential names and types (never secret values) |
 | `n8n_api` | Raw `/api/v1` request (path starts with `/`) |
 
@@ -102,7 +108,7 @@ dsh plugin --profile web add dsh-n8n-plugin
 dsh plugin --profile desktop add dsh-n8n-plugin
 
 # From a local tarball or source directory (development / air-gapped)
-dsh plugin --profile web add ./dsh-n8n-plugin-0.1.0.tgz
+dsh plugin --profile web add ./dsh-n8n-plugin-0.2.0.tgz
 dsh plugin --profile web add link:<path-to-this-package>
 ```
 
@@ -130,7 +136,7 @@ A standard double-sided DSH package: a host half (`lib/`) and a browser half (`c
 ```
 Settings page (browser)                        Agent (model)
   │                                              │
-  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 15 × n8n_* tools
+  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 21 × n8n_* tools
   │  /api/dsh-n8n-plugin/*    │                  │
   ▼                           ▼                  ▼
 ┌───────────── loopback fence (127.0.0.1 / ::1 only) ─────────────┐
@@ -141,7 +147,7 @@ Settings page (browser)                        Agent (model)
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-- **Host half** — `lib/index.js` registers routes, the 15 tools and the optional prompt section from one `apply()`; `lib/store.js` owns the registry (atomic writes, `0600`, corrupt-file quarantine); `lib/n8n.js` is the API v1 client (30 s timeout, merged abort signals, `accept-encoding: identity`) plus a direct webhook caller and an execution wait poller; `lib/http.js` enforces the loopback fence; `lib/mount-once.js` guarantees one mount per package and profile.
+- **Host half** — `lib/index.js` registers routes, the 21 tools and the optional prompt section from one `apply()`; `lib/store.js` owns the registry (atomic writes, `0600`, corrupt-file quarantine); `lib/n8n.js` is the API v1 client (30 s timeout, merged abort signals, `accept-encoding: identity`) plus a direct webhook caller and an execution wait poller; `lib/http.js` enforces the loopback fence; `lib/mount-once.js` guarantees one mount per package and profile.
 - **Browser half** — `client/index.js` renders the Settings section and talks to the same routes, so GUI and agent always agree.
 - **Prompt guidance** — `lib/guidance.js` emits the system-prompt section; it renders only when n8n_* tools are visible in the session.
 
@@ -164,7 +170,7 @@ Two boolean flags live in the plugin's `config` inside the profile patch. Both a
 - API keys are plaintext in a `0600` user-owned file — the same trust model as `~/.n8n` or a `n8n-api.sh` environment file. Responses only carry the last four characters.
 - Agents can read the instance list but cannot create or edit an instance: an API key must not be dictated through a conversation.
 - An n8n API key carries that instance's API authority. Register trustworthy instances only, rotate keys, and prefer a dedicated automation user.
-- Publishing immediately affects production webhook and schedule triggers; deleting a workflow stops its triggers; execution data can contain business-sensitive payloads. The injected guidance requires the agent to confirm these operations with the user first.
+- Publishing immediately affects production webhook and schedule triggers; deleting a workflow stops its triggers; deleting a tag removes it from every workflow; stopping an execution aborts business processing mid-flight; execution data can contain business-sensitive payloads. The injected guidance requires the agent to confirm these operations with the user first.
 
 ## 🛠 Development
 
@@ -181,7 +187,7 @@ lib/index.js             plugin entry (Config, apply, route/tool/prompt registra
 lib/store.js             instance store (atomic write, 0600, corrupt-file quarantine)
 lib/n8n.js               n8n public API v1 client (+ direct webhook call, execution wait)
 lib/routes.js            /api/dsh-n8n-plugin routes (loopback fence)
-lib/tool-specs.js        15 agent tool definitions (parameters, output schema, render, execute)
+lib/tool-specs.js        21 agent tool definitions (parameters, output schema, render, execute)
 lib/tools.js             the only defineTool() adapter over those definitions
 lib/render.js            pure model-facing formatters used by the render hooks
 lib/workflow-validate.js offline workflow validation
@@ -195,7 +201,7 @@ knowledge/               workflow-JSON reference
 ## 📦 Publishing
 
 ```sh
-npm pack                 # writes dsh-n8n-plugin-0.1.0.tgz (lib/, client/, knowledge/, cordis.patch.yml, icon.svg, both READMEs)
+npm pack                 # writes dsh-n8n-plugin-0.2.0.tgz (lib/, client/, knowledge/, cordis.patch.yml, icon.svg, both READMEs)
 npm publish              # publishes to the default registry once you are logged in
 ```
 
@@ -210,15 +216,18 @@ npm publish              # publishes to the default registry once you are logged
 
 ## 🤖 Model experience
 
-- 15 `n8n_*` tools (table above); `n8n_instances` and `n8n_workflow_validate` are the safe, read-mostly entry points.
+- 21 `n8n_*` tools (table above); `n8n_instances` and `n8n_workflow_validate` are the safe, read-mostly entry points.
 - A run loop in one chain: `n8n_workflow_publish` → `n8n_webhook_call` (trigger + wait) → `n8n_execution_get` to re-inspect — deploy, run, verify.
+- Housekeeping is one call each: `n8n_workflow_clone` (copy a workflow with its tags, unpublished), `n8n_workflow_tags` (read/replace a workflow's tags), `n8n_tag_create/update/delete`, and `n8n_execution_cancel` for a stuck run.
 - An optional system-prompt section (`announceToAgent`) teaches the alias convention and points at `knowledge/workflow-guide.md` for the full workflow-JSON rules.
-- Destructive operations (publish, delete) are gated by an explicit confirm-with-the-user-first rule in the guidance.
+- Destructive operations (publish, workflow/tag delete, execution stop) are gated by an explicit confirm-with-the-user-first rule in the guidance.
 
 ## ⚠️ Known limitations
 
 - The n8n public API still has no cross-version stable "run workflow manually" endpoint; `n8n_webhook_call` fills that gap through the Webhook trigger — the workflow needs a Webhook node and must be published (or use `mode:"test"` while the editor listens for test events). Workflows without a Webhook trigger must be run in the n8n UI, then inspected with `n8n_executions` / `n8n_execution_get`.
 - Public-API endpoints and fields differ across n8n versions (for example `publish/unpublish` alongside `activate/deactivate`, and updates that may want a `versionId`). The plugin falls back on a 404 for publishing; other differences are reachable through `n8n_api`.
+- Tags CRUD, workflow-tag read/write and execution stop rely on the instance exposing their public-API endpoints (`/tags`, `/workflows/{id}/tags`, `/executions/{id}/stop`). Older n8n builds return 404 there; upgrade the instance or use `n8n_api` for whatever it does expose.
+- n8n caps tag names at 24 characters, and its API reports an over-long name as a misleading `409 Tag already exists`; `n8n_tag_create` / `n8n_tag_update` reject it before sending.
 - A self-signed instance certificate is rejected by the DSH host's TLS validation; give the instance a trusted certificate or use internal HTTP.
 - One mount per profile: the built-in single-instance guard deduplicates a second row for the same package.
 

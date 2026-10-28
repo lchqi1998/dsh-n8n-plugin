@@ -13,7 +13,7 @@
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
-  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-15-8A5CF6">
+  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-21-8A5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-3DA639">
 </p>
 
@@ -29,7 +29,7 @@
 
 ## ✨ 为什么选它
 
-大多数 n8n 集成方式，是把实例地址和 API Key 反复粘进对话。本插件让 n8n 成为 DeepSeek Harness 的一等公民：一个设置页、一份实例清单、15 个共享它的 Agent 工具。
+大多数 n8n 集成方式，是把实例地址和 API Key 反复粘进对话。本插件让 n8n 成为 DeepSeek Harness 的一等公民：一个设置页、一份实例清单、21 个共享它的 Agent 工具。
 
 ### 一个别名，直达任意环境
 实例只需在 **设置 → n8n 实例** 登记一次——别名（`prod` / `staging` / `local`…）、实例地址、API Key。所有工具按别名指定目标实例，同一段指令可以指向任何环境，无需重复粘贴凭据。
@@ -48,7 +48,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 
 ## 🧩 Agent 工具
 
-15 个工具，全部按别名寻址：
+21 个工具，全部按别名寻址：
 
 | 工具 | 作用 |
 | --- | --- |
@@ -60,11 +60,17 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_workflow_delete` | 删除工作流（会停止其触发器） |
 | `n8n_workflow_publish` | 发布（activate）/ 取消发布（deactivate） |
 | `n8n_workflow_validate` | 离线校验工作流 JSON，不访问实例 |
+| `n8n_workflow_clone` | 克隆工作流：复制定义与标签，副本默认不发布 |
+| `n8n_workflow_tags` | 读取或替换工作流标签（按标签 id 或名称） |
 | `n8n_executions` | 列出执行记录（可按 workflowId / status 过滤） |
 | `n8n_execution_get` | 读取单次执行的结构化视图：状态、耗时、逐节点结果与错误摘要 |
+| `n8n_execution_cancel` | 取消运行中的执行 |
 | `n8n_wait_execution` | 轮询等待一条执行记录结束（可设超时与轮询间隔） |
 | `n8n_webhook_call` | 经 Webhook 触发器手动运行工作流，默认等待执行结束并返回逐节点结果 |
 | `n8n_tags` | 列出标签及 id |
+| `n8n_tag_create` | 创建标签 |
+| `n8n_tag_update` | 重命名标签（引用它的工作流同步生效） |
+| `n8n_tag_delete` | 删除标签（会从所有工作流上移除） |
 | `n8n_credentials` | 列出凭证名称与类型（不含密钥值） |
 | `n8n_api` | 通用 `/api/v1` 请求（路径需以 `/` 开头） |
 
@@ -102,7 +108,7 @@ dsh plugin --profile web add dsh-n8n-plugin
 dsh plugin --profile desktop add dsh-n8n-plugin
 
 # 从本地 tarball 或源码目录安装（开发/内网）
-dsh plugin --profile web add ./dsh-n8n-plugin-0.1.0.tgz
+dsh plugin --profile web add ./dsh-n8n-plugin-0.2.0.tgz
 dsh plugin --profile web add link:<本包所在路径>
 ```
 
@@ -130,7 +136,7 @@ dsh plugin --profile web add link:<本包所在路径>
 ```
 设置页（浏览器）                                 Agent（模型）
   │                                              │
-  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 15 个 n8n_* 工具
+  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 21 个 n8n_* 工具
   │  /api/dsh-n8n-plugin/*    │                  │
   ▼                           ▼                  ▼
 ┌─────────── 回环围栏（仅 127.0.0.1 / ::1）─────────────────┐
@@ -141,7 +147,7 @@ dsh plugin --profile web add link:<本包所在路径>
 └───────────────────────────────────────────────────────────┘
 ```
 
-- **宿主半边**——`lib/index.js` 在一个 `apply()` 里注册路由、15 个工具与可选提示段；`lib/store.js` 管理实例清单（原子写、`0600`、损坏隔离）；`lib/n8n.js` 是 API v1 客户端（30 秒超时、合并中止信号、`accept-encoding: identity`），外加 Webhook 直连调用与执行轮询等待；`lib/http.js` 落实回环围栏；`lib/mount-once.js` 保证同一 package/profile 只挂载一份。
+- **宿主半边**——`lib/index.js` 在一个 `apply()` 里注册路由、21 个工具与可选提示段；`lib/store.js` 管理实例清单（原子写、`0600`、损坏隔离）；`lib/n8n.js` 是 API v1 客户端（30 秒超时、合并中止信号、`accept-encoding: identity`），外加 Webhook 直连调用与执行轮询等待；`lib/http.js` 落实回环围栏；`lib/mount-once.js` 保证同一 package/profile 只挂载一份。
 - **浏览器半边**——`client/index.js` 渲染设置分区，走同一组路由，GUI 与 Agent 永远一致。
 - **提示词引导**——`lib/guidance.js` 生成系统提示段；仅当会话中 n8n_* 工具可见时才渲染。
 
@@ -164,7 +170,7 @@ dsh plugin --profile web add link:<本包所在路径>
 - API Key 以明文保存在用户主目录私有文件（`0600`），与 `~/.n8n`、`n8n-api.sh` 的环境文件同一信任模型；接口响应只含末四位。
 - Agent 只能读取实例清单，**不能**新增或修改实例——API Key 不应通过对话传递。
 - n8n API Key 拥有该实例的完整 API 权限（按 n8n 的 key 作用域），请只登记可信实例，定期轮换，并优先为自动化单独建用户。
-- 发布/取消发布会立即影响生产的 webhook 与定时触发器；删除工作流会停止其触发器；执行记录可能含业务敏感数据。插件的系统提示要求 Agent 在执行这些操作前先向用户确认。
+- 发布/取消发布会立即影响生产的 webhook 与定时触发器；删除工作流会停止其触发器；删除标签会从所有工作流上移除该标签；取消执行会中止正在进行的业务处理；执行记录可能含业务敏感数据。插件的系统提示要求 Agent 在执行这些操作前先向用户确认。
 
 ## 🛠 开发
 
@@ -181,7 +187,7 @@ lib/index.js             插件入口（Config、apply、路由/工具/提示段
 lib/store.js             实例存储（原子写、0600、损坏文件隔离）
 lib/n8n.js               n8n 公开 API v1 客户端（含 webhook 直连与执行等待）
 lib/routes.js            /api/dsh-n8n-plugin 路由（回环围栏）
-lib/tool-specs.js        15 个 Agent 工具定义（参数、输出 schema、render、execute）
+lib/tool-specs.js        21 个 Agent 工具定义（参数、输出 schema、render、execute）
 lib/tools.js             唯一的 defineTool() 适配层
 lib/render.js            纯函数渲染器（供各 render 钩子复用）
 lib/workflow-validate.js 离线工作流校验
@@ -195,7 +201,7 @@ knowledge/               工作流 JSON 参考
 ## 📦 发布
 
 ```sh
-npm pack                 # 产出 dsh-n8n-plugin-0.1.0.tgz（lib/、client/、knowledge/、cordis.patch.yml、icon.svg 与两个 README）
+npm pack                 # 产出 dsh-n8n-plugin-0.2.0.tgz（lib/、client/、knowledge/、cordis.patch.yml、icon.svg 与两个 README）
 npm publish              # 已登录 npm 时发布（未 scoped 包用默认 registry 即可）
 ```
 
@@ -210,15 +216,18 @@ npm publish              # 已登录 npm 时发布（未 scoped 包用默认 reg
 
 ## 🤖 模型体验
 
-- 15 个 `n8n_*` 工具（见上表）；`n8n_instances` 与 `n8n_workflow_validate` 是最安全的只读入口。
+- 21 个 `n8n_*` 工具（见上表）；`n8n_instances` 与 `n8n_workflow_validate` 是最安全的只读入口。
 - 运行闭环：`n8n_workflow_publish` 发布 → `n8n_webhook_call` 触发并等待 → `n8n_execution_get` 复查，一条链路覆盖「部署、运行、验证」。
+- 日常维护各一步到位：`n8n_workflow_clone`（连同标签复制工作流，副本默认不发布）、`n8n_workflow_tags`（读取/替换工作流标签）、`n8n_tag_create/update/delete`，以及用 `n8n_execution_cancel` 中止卡住的运行。
 - 可选系统提示段（`announceToAgent`）：教 Agent 别名约定，并指向 `knowledge/workflow-guide.md` 获取完整工作流 JSON 规范。
-- 破坏性操作（发布、删除）由提示段中的「先向用户确认」规则把关。
+- 破坏性操作（发布、删除工作流/标签、取消执行）由提示段中的「先向用户确认」规则把关。
 
 ## ⚠️ 已知限制
 
 - n8n 公开 API 仍没有跨版本稳定的「手动执行工作流」端点；`n8n_webhook_call` 通过 Webhook 触发器补上了这条路径——要求工作流里有 Webhook 节点且已发布（或用 `mode:"test"` 配合编辑器监听测试事件）。不含 Webhook 触发器的工作流，请在 n8n 界面执行，再用 `n8n_executions` / `n8n_execution_get` 查看结果。
 - 不同 n8n 版本的公开 API 端点与字段有差异（例如 `publish/unpublish` 与 `activate/deactivate` 并存、更新可能需要 `versionId`）。插件对发布/取消发布做了 404 回退；其他差异可用 `n8n_api` 直达接口。
+- 标签增改删、工作流标签读写与执行取消依赖实例暴露对应公开 API 端点（`/tags`、`/workflows/{id}/tags`、`/executions/{id}/stop`）。较旧的 n8n 会返回 404；请升级实例，或改用 `n8n_api` 调用它实际提供的端点。
+- n8n 的标签名上限为 24 个字符，且 API 会把超长名称报成误导性的 `409 Tag already exists`；`n8n_tag_create` / `n8n_tag_update` 在发送前就拒绝超长名称。
 - 实例地址使用自签名证书时会被 DSH 主机的 TLS 校验拒绝（提示证书错误）；请为实例配置受信任证书，或使用内网 HTTP。
 - 一个 profile 只挂载一份本插件（重复行会由内置的 single-instance 守卫去重）。
 

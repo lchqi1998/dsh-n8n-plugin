@@ -23,7 +23,7 @@
 | `connections` | 是 | 以**源节点 name** 为键的连接表 |
 | `settings` | 是 | 至少包含 `"executionOrder": "v1"` |
 | `staticData` / `pinData` | 否 | 读取时可能返回，更新时原样保留 |
-| `tags` | 否 | `[{ "id": "<tagId>" }]`（先 `n8n_tags` 取 id） |
+| `tags` | 否 | 只读：`[{ "id": "<tagId>" }]` 由 API 回填；创建/更新时设置标签用 `n8n_workflow_tags`（`action:"set"` + `tagIds`/`tagNames`），不能写进工作流文档 |
 
 创建时 `active` 是只读派生字段：新工作流默认未发布，用 `n8n_workflow_publish` 或创建时 `publish: true` 发布。更新时若实例要求乐观锁，`n8n_workflow_update` 可通过 `n8n_api` 补充 `versionId`。
 
