@@ -99,6 +99,6 @@
     "access": "public"
   },
   "scripts": {
-    "check": "node --check lib/index.js && node --check lib/store.js && node --check lib/n8n.js && node --check lib/routes.js && node --check lib/http.js && node --check lib/render.js && node --check lib/tool-specs.js && node --check lib/tools.js && node --check lib/guidance.js && node --check lib/mount-once.js && node --check lib/workflow-validate.js && node --check client/index.js"
+    "check": "node --check lib/index.js && node --check lib/store.js && node --check lib/n8n.js && node --check lib/routes.js && node --check lib/http.js && node --check lib/render.js && node --check lib/tool-specs.js && node --check lib/tools.js && node --check lib/guidance.js && node --check lib/mount-once.js && node --check lib/workflow-validate.js && node --check client/index.js && node --check test/workflow-validate.test.js"
   }
 }

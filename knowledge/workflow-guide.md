@@ -1,6 +1,6 @@
 # n8n 工作流 JSON 参考（dsh-n8n-plugin 随附）
 
-本文件供 Agent 在构建、更新工作流 JSON 时按需读取（`read` 工具）。它只描述**通过公开 API 提交**的工作流文档结构，不依赖 n8n 编辑器会话。
+本文件供 Agent 在构建、更新工作流 JSON 时按需读取（`read` 工具）。它只描述**通过公开 API 提交**的工作流文档结构，不依赖 n8n 编辑器会话。结构之外，§8 收录实测踩坑清单，§9 提供可直接改用的开箱模板（与本文档同目录的 `templates/`）。
 
 ## 1. 顶层结构
 
@@ -103,6 +103,8 @@
 
 ## 6. 常见模式
 
+以下四种模式都有可直接导入的开箱模板（§9）：读模板 → 改参数 → `n8n_workflow_validate` → 创建。
+
 ### 6.1 Webhook → 校验 → 写入 → 通知
 
 ```
@@ -148,5 +150,45 @@ Chat/Webhook → AI Agent(langchain.agent)
 3. `connections` 只引用存在的节点名；IF 的 true/false 索引正确。
 4. `responseNode` 模式有响应节点。
 5. 引用凭证先确认存在；引用标签先取 tagId。
-6. 先跑 `n8n_workflow_validate`，再创建/更新，然后 `n8n_workflow_get` 读回核对。
-7. 发布前确认触发器行为（webhook 路径、定时时区），发布/删除前征求用户同意。
+6. 表达式字符串以 `=` 开头（见 §8 第 2 条）。
+7. 先跑 `n8n_workflow_validate`，再创建/更新，然后 `n8n_workflow_get` 读回核对。
+8. 发布前确认触发器行为（webhook 路径、定时时区），发布/删除前征求用户同意。
+
+## 8. 踩坑清单
+
+以下条目来自真实使用中的返工，提交前逐条对照（其中多数已被 `n8n_workflow_validate` 自动检查）：
+
+**结构与连接**
+
+1. `connections` 的键是节点 **name**，不是 id。重命名节点后必须同步改 connections，否则整条链断开。
+2. 已发布（active）的工作流不能直接 DELETE（API 返回 409）——先 `n8n_workflow_publish` 取消发布，再删除。
+3. 更新工作流必须提交**完整文档**（PUT 全量替换语义）：只发改动字段会丢掉其余节点。乐观锁场景在文档里带上读回的 `versionId`。
+4. `tags` 不能写进工作流文档（API 只读回填）——用 `n8n_workflow_tags` 的 `action:"set"` 设置标签。
+
+**表达式**
+
+5. 表达式字符串必须以 `=` 开头才会求值：写 `"{{ $json.a }}"` 是**字面文本**，写 `"={{ $json.a }}"` 才是表达式。手写 JSON 最常漏的就是这个 `=`。
+6. 引用名称含空格或点的节点，必须用 `$node["Node Name"]` 方括号形式，不能用 `$node.Node Name`。
+
+**节点行为**
+
+7. 节点输出 **0 行**时，下游整条链**静默跳过**（HTTP 节点收到 200 空体）——给可能输出 0 行的节点（get 空表、deleteRows 0 匹配）设置 `alwaysOutputData: true`，空标记 `{}` 用 `id === undefined` 识别。
+8. DataTable 节点的 `matchType` 是**节点级参数**（默认 `'anyCondition'` 即 OR 语义）：写在 filters 对象里会被忽略；多条件 AND 必须显式 `parameters.matchType = "allConditions"`，否则双条件按 OR 命中，可能误删/误改。
+9. Code 节点运行在 task runner 沙箱，`$workflow.staticData` 为 **undefined**——工作流持久状态不要用 Code 节点读写 staticData，改用 DataTable 节点（`n8n-nodes-base.dataTable`）+ 公开 API `/api/v1/data-tables`。
+10. SplitInBatches 的两个输出（loop/done）都要接线：loop 接回自身形成循环，done 接后续汇总；只接一个就会「只处理第一批」或「结束后无事发生」。
+
+**版本与凭证**
+
+11. `typeVersion` 必须是数字且以目标实例为准——拿不准时用 `n8n_workflow_get` 读一个同类现有工作流抄版本号。
+12. 凭证只通过 `credentials: { "<type>": { id, name } }` 引用，先 `n8n_credentials` 确认存在；id 对不上时创建能成功、执行才报错。
+
+## 9. 模板库
+
+开箱模板与本文档同目录的 `templates/` 下（得到本文档绝对路径后，templates 目录就在它旁边）。用法：`read` 模板 → 按需改参数（url、path、凭证）→ `n8n_workflow_validate` → `n8n_workflow_create`。
+
+| 模板文件 | 场景 | 要点 |
+| --- | --- | --- |
+| `templates/webhook-lead.json` | Webhook 接收线索：校验 → 写库 → 响应 | `responseNode` 模式 + 两个 Respond to Webhook（200/400） |
+| `templates/scheduled-sync.json` | 定时拉取列表、分批逐条处理 | SplitInBatches 循环回边 + done 汇总（Code 节点） |
+| `templates/error-notify.json` | 错误通知工作流 | 供其他工作流的 `settings.errorWorkflow` 指向 |
+| `templates/ai-agent-chat.json` | Webhook → AI Agent（模型 + 记忆） | `responseMode: "lastNode"` 直接返回 Agent 输出；**创建前**把模型节点的 `credentials.id` 换成 `n8n_credentials` 查到的真实值 |

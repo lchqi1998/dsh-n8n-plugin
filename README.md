@@ -9,7 +9,9 @@
   <a href="https://github.com/lchqi1998/dsh-n8n-plugin/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/lchqi1998/dsh-n8n-plugin?style=flat&logo=github&color=0969DA&label=contributors"></a>
   <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm package" src="https://img.shields.io/npm/v/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=npm"></a>
   <a href="https://npmmirror.com/package/dsh-n8n-plugin"><img alt="npmmirror weekly downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.npmmirror.com%2Fdownloads%2Fpoint%2Flast-week%2Fdsh-n8n-plugin&query=%24.downloads&style=flat&logo=npm&color=CB3837&label=npmmirror%20weekly&cacheSeconds=3600"></a>
+  <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm downloads" src="https://img.shields.io/npm/dt/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=npm%20downloads"></a>
   <a href="https://socket.dev/npm/package/dsh-n8n-plugin"><img alt="Socket score" src="https://badge.socket.dev/npm/package/dsh-n8n-plugin"></a>
+  <a href="https://dsh-plugin.org/plugins/lchqi1998/dsh-n8n-plugin"><img alt="Listed on dsh-plugin.org" src="https://dsh-plugin.org/badges/listed.svg"></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
@@ -38,7 +40,7 @@ Instances are registered once under **Settings → n8n instances** — an alias 
 The Settings page and the agent tools read **one and the same store** — what you configure in the GUI is exactly what the agent sees. The split of duties is deliberate: agents can **list** instances but can never create or edit one, because an API key must not be dictated through a conversation.
 
 ### Validate offline, publish with confidence
-`n8n_workflow_validate` checks the full workflow document before anything is sent — unique node ids and names (connections are keyed by name), connection targets that actually exist, webhook nodes paired with their `Respond to Webhook` responder, a recommended `settings.executionOrder` — all without contacting the instance.
+`n8n_workflow_validate` checks the full workflow document in layers before anything is sent: **structure** (unique node ids and names — connections are keyed by name, connection targets that actually exist, webhook nodes paired with their `Respond to Webhook` responder), **per-node parameters** (webhook path/httpMethod/responseMode, scheduleTrigger `rule.interval`, httpRequest `url`, code-node bodies and more), **topology** (a trigger exists and every node is reachable, IF/Switch branch wiring, SplitInBatches loop-back edge, AI Agent language-model link), and **expressions** (balanced `{{ }}`, a warning for missing `= ` prefix) — all without contacting the instance.
 
 ### Keys never leave this machine
 API keys live only in `~/.dsh/dsh-n8n-plugin.json` with `0600` permissions. Every response masks them to the last four characters, and the Settings page never echoes a full key back.
@@ -59,7 +61,7 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 | `n8n_workflow_update` | Replace a workflow document, optionally changing its published state |
 | `n8n_workflow_delete` | Delete a workflow (its triggers stop) |
 | `n8n_workflow_publish` | Publish (activate) / unpublish (deactivate) |
-| `n8n_workflow_validate` | Offline JSON validation, no instance contacted |
+| `n8n_workflow_validate` | Offline JSON validation in four layers: structure / per-node parameters / topology / expressions, no instance contacted |
 | `n8n_workflow_clone` | Clone a workflow: definition + tags, unpublished by default |
 | `n8n_workflow_tags` | Read or replace a workflow's tags (by tag ids or names) |
 | `n8n_executions` | List executions (filter by workflow id / status) |
@@ -74,7 +76,7 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 | `n8n_credentials` | List credential names and types (never secret values) |
 | `n8n_api` | Raw `/api/v1` request (path starts with `/`) |
 
-The workflow-JSON reference and ready-made patterns live in [`knowledge/workflow-guide.md`](knowledge/workflow-guide.md). With `announceToAgent` on, the prompt names that file's absolute path so the agent can read it on demand. Tool descriptions and user-facing messages are written in Chinese; tool names, parameter names and n8n protocol vocabulary (field names, node types, status enums) intentionally stay in English.
+The workflow-JSON reference, a field-tested **pitfall list** and **ready-made templates** live in [`knowledge/workflow-guide.md`](knowledge/workflow-guide.md) (templates in [`knowledge/templates/`](knowledge/templates/): webhook lead capture, scheduled sync, error notify, and AI chat — tweak parameters and ship). With `announceToAgent` on, the prompt names that file's absolute path so the agent can read it on demand. Tool descriptions and user-facing messages are written in Chinese; tool names, parameter names and n8n protocol vocabulary (field names, node types, status enums) intentionally stay in English.
 
 ## 🖥️ Instance management
 

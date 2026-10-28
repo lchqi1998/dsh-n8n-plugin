@@ -9,7 +9,9 @@
   <a href="https://github.com/lchqi1998/dsh-n8n-plugin/graphs/contributors"><img alt="GitHub contributors" src="https://img.shields.io/github/contributors-anon/lchqi1998/dsh-n8n-plugin?style=flat&logo=github&color=0969DA&label=contributors"></a>
   <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm package" src="https://img.shields.io/npm/v/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=npm"></a>
   <a href="https://npmmirror.com/package/dsh-n8n-plugin"><img alt="npmmirror weekly downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.npmmirror.com%2Fdownloads%2Fpoint%2Flast-week%2Fdsh-n8n-plugin&query=%24.downloads&style=flat&logo=npm&color=CB3837&label=npmmirror%20%E5%91%A8%E4%B8%8B%E8%BD%BD&cacheSeconds=3600"></a>
+  <a href="https://www.npmjs.com/package/dsh-n8n-plugin"><img alt="npm downloads" src="https://img.shields.io/npm/dt/dsh-n8n-plugin?style=flat&logo=npm&color=CB3837&label=npm%20%E4%B8%8B%E8%BD%BD%E6%80%BB%E9%87%8F"></a>
   <a href="https://socket.dev/npm/package/dsh-n8n-plugin"><img alt="Socket score" src="https://badge.socket.dev/npm/package/dsh-n8n-plugin"></a>
+  <a href="https://dsh-plugin.org/plugins/lchqi1998/dsh-n8n-plugin"><img alt="Listed on dsh-plugin.org" src="https://dsh-plugin.org/badges/listed.svg"></a>
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
@@ -38,7 +40,7 @@
 设置页与 Agent 工具读取**同一份存储**——你在界面上配置的，就是 Agent 看到的。职责划分也是刻意的：Agent 只能**读取**实例清单，永远不能新增或修改——API Key 不应通过对话传递。
 
 ### 先离线校验，再放心发布
-`n8n_workflow_validate` 在发送前完整检查工作流文档——节点 id/name 唯一（connections 以名称为键）、连接目标真实存在、webhook 节点配有 `Respond to Webhook` 响应节点、建议设置 `settings.executionOrder`——全程不访问实例。
+`n8n_workflow_validate` 在发送前分层检查工作流文档：**结构**（节点 id/name 唯一——connections 以名称为键、连接目标真实存在、webhook 配有 `Respond to Webhook` 响应节点）、**常见节点参数**（webhook 的 path/httpMethod/responseMode、scheduleTrigger 的 rule.interval、httpRequest 的 url、code 节点的代码体等）、**拓扑**（触发器存在且全节点可达、IF/Switch 分支接线、SplitInBatches 循环回边、AI Agent 的语言模型连接）、**表达式**（`{{ }}` 配对、`= ` 前缀缺失警告）——全程不访问实例。
 
 ### 密钥不出本机
 API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显末四位，设置页从不回传完整密钥。
@@ -59,7 +61,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_workflow_update` | 用完整文档更新工作流，可同时发布/取消发布 |
 | `n8n_workflow_delete` | 删除工作流（会停止其触发器） |
 | `n8n_workflow_publish` | 发布（activate）/ 取消发布（deactivate） |
-| `n8n_workflow_validate` | 离线校验工作流 JSON，不访问实例 |
+| `n8n_workflow_validate` | 离线校验工作流 JSON：结构 / 常见节点参数 / 拓扑 / 表达式四层检查，不访问实例 |
 | `n8n_workflow_clone` | 克隆工作流：复制定义与标签，副本默认不发布 |
 | `n8n_workflow_tags` | 读取或替换工作流标签（按标签 id 或名称） |
 | `n8n_executions` | 列出执行记录（可按 workflowId / status 过滤） |
@@ -74,7 +76,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_credentials` | 列出凭证名称与类型（不含密钥值） |
 | `n8n_api` | 通用 `/api/v1` 请求（路径需以 `/` 开头） |
 
-工作流 JSON 规范与常见模式见 [`knowledge/workflow-guide.md`](knowledge/workflow-guide.md)；`announceToAgent` 开启时，系统提示会给 Agent 该文件的绝对路径，供其按需 `read`。工具描述与用户可见文案为中文；工具名、参数名与 n8n 协议词汇（字段名、节点类型、状态枚举）有意保留英文。
+工作流 JSON 规范、**实测踩坑清单**与**开箱模板**见 [`knowledge/workflow-guide.md`](knowledge/workflow-guide.md)（模板在 [`knowledge/templates/`](knowledge/templates/) 下：webhook 线索、定时同步、错误通知、AI 对话四个模式，改参数即可用）。`announceToAgent` 开启时，系统提示会给 Agent 该文件的绝对路径，供其按需 `read`。工具描述与用户可见文案为中文；工具名、参数名与 n8n 协议词汇（字段名、节点类型、状态枚举）有意保留英文。
 
 ## 🖥️ 实例管理
 
