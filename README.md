@@ -58,7 +58,7 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 | `n8n_workflows` | List workflows (filter by active / name / tags; cursor pagination) |
 | `n8n_workflow_get` | Read a full workflow document |
 | `n8n_workflow_create` | Create from JSON, optionally publishing immediately |
-| `n8n_workflow_update` | Replace a workflow document, optionally changing its published state |
+| `n8n_workflow_update` | Replace a workflow document, optionally changing its published state; keeping `versionId` enables the concurrency guard |
 | `n8n_workflow_delete` | Delete a workflow (its triggers stop) |
 | `n8n_workflow_publish` | Publish (activate) / unpublish (deactivate) |
 | `n8n_workflow_validate` | Offline JSON validation in four layers: structure / per-node parameters / topology / expressions, no instance contacted |
@@ -68,7 +68,7 @@ Publishing uses the modern `POST /workflows/{id}/publish` and falls back to the 
 | `n8n_execution_get` | Read one execution as a structured view: status, duration, per-node results and error summaries |
 | `n8n_execution_cancel` | Stop a running execution |
 | `n8n_wait_execution` | Poll one execution until it settles (configurable timeout and interval) |
-| `n8n_webhook_call` | Run a workflow on demand through its Webhook trigger; waits for completion by default and returns per-node results |
+| `n8n_webhook_call` | Run a workflow on demand through its Webhook trigger; waits for completion by default, returns per-node results, and flags concurrent triggers instead of guessing which run was yours |
 | `n8n_tags` | List tags and their ids |
 | `n8n_tag_create` | Create a tag |
 | `n8n_tag_update` | Rename a tag (every workflow referencing it follows) |
@@ -227,7 +227,7 @@ npm publish              # publishes to the default registry once you are logged
 ## ⚠️ Known limitations
 
 - The n8n public API still has no cross-version stable "run workflow manually" endpoint; `n8n_webhook_call` fills that gap through the Webhook trigger — the workflow needs a Webhook node and must be published (or use `mode:"test"` while the editor listens for test events). Workflows without a Webhook trigger must be run in the n8n UI, then inspected with `n8n_executions` / `n8n_execution_get`.
-- Public-API endpoints and fields differ across n8n versions (for example `publish/unpublish` alongside `activate/deactivate`, and updates that may want a `versionId`). The plugin falls back on a 404 for publishing; other differences are reachable through `n8n_api`.
+- Public-API endpoints and fields differ across n8n versions (for example `publish/unpublish` alongside `activate/deactivate`, and builds that return no `versionId`). The plugin falls back on a 404 for publishing; `n8n_workflow_update` enforces optimistic concurrency whenever the instance exposes `versionId` (a stale base version is refused, never overwritten), reports `concurrency: "unsupported"` otherwise; other differences are reachable through `n8n_api`.
 - Tags CRUD, workflow-tag read/write and execution stop rely on the instance exposing their public-API endpoints (`/tags`, `/workflows/{id}/tags`, `/executions/{id}/stop`). Older n8n builds return 404 there; upgrade the instance or use `n8n_api` for whatever it does expose.
 - n8n caps tag names at 24 characters, and its API reports an over-long name as a misleading `409 Tag already exists`; `n8n_tag_create` / `n8n_tag_update` reject it before sending.
 - A self-signed instance certificate is rejected by the DSH host's TLS validation; give the instance a trusted certificate or use internal HTTP.

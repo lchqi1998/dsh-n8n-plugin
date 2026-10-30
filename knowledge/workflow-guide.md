@@ -25,7 +25,7 @@
 | `staticData` / `pinData` | 否 | 读取时可能返回，更新时原样保留 |
 | `tags` | 否 | 只读：`[{ "id": "<tagId>" }]` 由 API 回填；创建/更新时设置标签用 `n8n_workflow_tags`（`action:"set"` + `tagIds`/`tagNames`），不能写进工作流文档 |
 
-创建时 `active` 是只读派生字段：新工作流默认未发布，用 `n8n_workflow_publish` 或创建时 `publish: true` 发布。更新时若实例要求乐观锁，`n8n_workflow_update` 可通过 `n8n_api` 补充 `versionId`。
+创建时 `active` 是只读派生字段：新工作流默认未发布，用 `n8n_workflow_publish` 或创建时 `publish: true` 发布。更新时把 `n8n_workflow_get` 读回的 `versionId` 原样留在文档里即可启用并发保护：实例当前版本已经变了，`n8n_workflow_update` 会拒绝写入并返回冲突，需要重新读取、合并后再提交。
 
 ## 2. 节点
 
@@ -162,7 +162,7 @@ Chat/Webhook → AI Agent(langchain.agent)
 
 1. `connections` 的键是节点 **name**，不是 id。重命名节点后必须同步改 connections，否则整条链断开。
 2. 已发布（active）的工作流不能直接 DELETE（API 返回 409）——先 `n8n_workflow_publish` 取消发布，再删除。
-3. 更新工作流必须提交**完整文档**（PUT 全量替换语义）：只发改动字段会丢掉其余节点。乐观锁场景在文档里带上读回的 `versionId`。
+3. 更新工作流必须提交**完整文档**（PUT 全量替换语义）：只发改动字段会丢掉其余节点。务必保留读回的 `versionId`——插件用它做乐观并发校验，版本不一致时拒绝写入，而不是覆盖别人的改动。
 4. `tags` 不能写进工作流文档（API 只读回填）——用 `n8n_workflow_tags` 的 `action:"set"` 设置标签。
 
 **表达式**

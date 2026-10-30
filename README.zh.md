@@ -58,7 +58,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_workflows` | 列出工作流（active / name / tags 过滤，游标分页） |
 | `n8n_workflow_get` | 读取完整工作流 JSON |
 | `n8n_workflow_create` | 从 JSON 创建工作流，可立即发布 |
-| `n8n_workflow_update` | 用完整文档更新工作流，可同时发布/取消发布 |
+| `n8n_workflow_update` | 用完整文档更新工作流，可同时发布/取消发布；保留 `versionId` 即启用并发保护 |
 | `n8n_workflow_delete` | 删除工作流（会停止其触发器） |
 | `n8n_workflow_publish` | 发布（activate）/ 取消发布（deactivate） |
 | `n8n_workflow_validate` | 离线校验工作流 JSON：结构 / 常见节点参数 / 拓扑 / 表达式四层检查，不访问实例 |
@@ -68,7 +68,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_execution_get` | 读取单次执行的结构化视图：状态、耗时、逐节点结果与错误摘要 |
 | `n8n_execution_cancel` | 取消运行中的执行 |
 | `n8n_wait_execution` | 轮询等待一条执行记录结束（可设超时与轮询间隔） |
-| `n8n_webhook_call` | 经 Webhook 触发器手动运行工作流，默认等待执行结束并返回逐节点结果 |
+| `n8n_webhook_call` | 经 Webhook 触发器手动运行工作流，默认等待执行结束并返回逐节点结果；并发触发时按开始时间定位并告警 |
 | `n8n_tags` | 列出标签及 id |
 | `n8n_tag_create` | 创建标签 |
 | `n8n_tag_update` | 重命名标签（引用它的工作流同步生效） |
@@ -227,7 +227,7 @@ npm publish              # 已登录 npm 时发布（未 scoped 包用默认 reg
 ## ⚠️ 已知限制
 
 - n8n 公开 API 仍没有跨版本稳定的「手动执行工作流」端点；`n8n_webhook_call` 通过 Webhook 触发器补上了这条路径——要求工作流里有 Webhook 节点且已发布（或用 `mode:"test"` 配合编辑器监听测试事件）。不含 Webhook 触发器的工作流，请在 n8n 界面执行，再用 `n8n_executions` / `n8n_execution_get` 查看结果。
-- 不同 n8n 版本的公开 API 端点与字段有差异（例如 `publish/unpublish` 与 `activate/deactivate` 并存、更新可能需要 `versionId`）。插件对发布/取消发布做了 404 回退；其他差异可用 `n8n_api` 直达接口。
+- 不同 n8n 版本的公开 API 端点与字段有差异（例如 `publish/unpublish` 与 `activate/deactivate` 并存、部分版本不返回 `versionId`）。插件对发布/取消发布做了 404 回退；`n8n_workflow_update` 在实例提供 `versionId` 时做乐观并发校验（版本不一致直接拒绝写入），不提供时照常写入并在结果里标注「无法校验」；其他差异可用 `n8n_api` 直达接口。
 - 标签增改删、工作流标签读写与执行取消依赖实例暴露对应公开 API 端点（`/tags`、`/workflows/{id}/tags`、`/executions/{id}/stop`）。较旧的 n8n 会返回 404；请升级实例，或改用 `n8n_api` 调用它实际提供的端点。
 - n8n 的标签名上限为 24 个字符，且 API 会把超长名称报成误导性的 `409 Tag already exists`；`n8n_tag_create` / `n8n_tag_update` 在发送前就拒绝超长名称。
 - 实例地址使用自签名证书时会被 DSH 主机的 TLS 校验拒绝（提示证书错误）；请为实例配置受信任证书，或使用内网 HTTP。
