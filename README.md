@@ -169,8 +169,10 @@ Two boolean flags live in the plugin's `config` inside the profile patch. Both a
 
 - `/api/dsh-n8n-plugin/*` accepts loopback requests only, validating the socket address, `Host`, `Origin` and `Sec-Fetch-Site`; any request carrying `X-Forwarded-For` / `CF-Connecting-IP` is refused. Never expose this page through a reverse proxy.
 - Request bodies are capped at 256 KiB, and responses are sent `no-store`.
-- API keys are plaintext in a `0600` user-owned file — the same trust model as `~/.n8n` or a `n8n-api.sh` environment file. Responses only carry the last four characters.
+- API keys support three registration modes with priority **environment-variable reference (`apiKeyEnv`) > key-file reference (`apiKeyFile`) > inline (`apiKey`)**; a configured reference that cannot be resolved fails the call outright instead of silently falling back. Inline keys are plaintext in a `0600` user-owned file — the same trust model as `~/.n8n` or a `n8n-api.sh` environment file. Responses only carry the last four characters.
 - Agents can read the instance list but cannot create or edit an instance: an API key must not be dictated through a conversation.
+- Each instance can be switched to **read-only (`readOnly`)**: every state-changing tool call (create/update/delete/publish/clone/tag writes/execution cancel/webhook call/non-GET `n8n_api`) is then refused with a hint on where to turn the flag off.
+- Every guarded write — including attempts refused by read-only mode — is appended to the audit log `~/.dsh/dsh-n8n-plugin.audit.log` (one JSON object per line: time, agent/web source, tool, instance, target, outcome, duration; no secrets and no response payloads; rotated past 1 MB keeping the newest 500 lines). The settings page shows the latest 50 entries.
 - An n8n API key carries that instance's API authority. Register trustworthy instances only, rotate keys, and prefer a dedicated automation user.
 - Publishing immediately affects production webhook and schedule triggers; deleting a workflow stops its triggers; deleting a tag removes it from every workflow; stopping an execution aborts business processing mid-flight; execution data can contain business-sensitive payloads. The injected guidance requires the agent to confirm these operations with the user first.
 
@@ -231,6 +233,7 @@ npm publish              # publishes to the default registry once you are logged
 - Tags CRUD, workflow-tag read/write and execution stop rely on the instance exposing their public-API endpoints (`/tags`, `/workflows/{id}/tags`, `/executions/{id}/stop`). Older n8n builds return 404 there; upgrade the instance or use `n8n_api` for whatever it does expose.
 - n8n caps tag names at 24 characters, and its API reports an over-long name as a misleading `409 Tag already exists`; `n8n_tag_create` / `n8n_tag_update` reject it before sending.
 - A self-signed instance certificate is rejected by the DSH host's TLS validation; give the instance a trusted certificate or use internal HTTP.
+- Read-only mode and the audit trail are enforced plugin-side: they gate the tools this plugin registers and do not narrow the n8n API key's own authority; calls made outside the plugin are unaffected. The audit log is a local plaintext JSONL file (no secrets, no response payloads); deleting the file clears the history.
 - One mount per profile: the built-in single-instance guard deduplicates a second row for the same package.
 
 ## 📄 License

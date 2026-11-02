@@ -31,6 +31,7 @@ window.__ModuleLoader__.load({
     const API = {
       instances: '/api/dsh-n8n-plugin/instances',
       test: '/api/dsh-n8n-plugin/test',
+      audit: '/api/dsh-n8n-plugin/audit',
     }
 
     /** Theme tokens with neutral fallbacks. */
@@ -52,7 +53,7 @@ window.__ModuleLoader__.load({
     const zh = {
       title: 'n8n 实例',
       description: '管理本插件的 n8n 实例：每个实例一个别名、实例地址与 API Key，Agent 通过别名选择实例。',
-      security: 'API Key 以明文保存在本机 ~/.dsh/dsh-n8n-plugin.json（权限 0600），只在回环地址上传输；页面只显示末四位。',
+      security: 'API Key 可明文存于本机 ~/.dsh/dsh-n8n-plugin.json（0600），也可用环境变量名或密钥文件间接引用（解析优先级：环境变量 > 文件 > 明文）；只在回环地址传输，页面只显示末四位。写操作会记入本机审计日志。',
       loading: '加载中…',
       empty: '还没有配置任何 n8n 实例，点击「添加实例」开始。',
       add: '添加实例',
@@ -61,9 +62,15 @@ window.__ModuleLoader__.load({
       alias: '别名',
       baseUrl: '实例地址',
       apiKey: 'API Key',
+      apiKeyEnv: 'API Key 环境变量（可选）',
+      apiKeyEnvHint: '填环境变量名（如 N8N_PROD_KEY），解析时优先于直接填写的 Key',
+      apiKeyFile: 'API Key 文件路径（可选）',
+      apiKeyFileHint: '本机文件路径，首行为 Key；优先级低于环境变量',
       descriptionLabel: '说明（可选）',
       defaultLabel: '默认',
       defaultHint: '新工作流默认使用的实例；只能有一个默认实例。',
+      readOnlyLabel: '只读模式',
+      readOnlyHint: '开启后 Agent 的全部写类工具（发布/删除/更新/标签/取消执行/触发）与非 GET 的 n8n_api 都会被拒绝。',
       actions: '操作',
       test: '测试',
       edit: '编辑',
@@ -78,7 +85,7 @@ window.__ModuleLoader__.load({
       baseUrlHint: '例如 https://n8n.example.com 或 http://localhost:5678（可省略末尾的 /api/v1）',
       apiKeyHint: '在 n8n 的 设置 → n8n API → 创建 API Key 获取',
       apiKeyKeep: '已配置（{masked}），留空保持不变',
-      apiKeyRequired: 'API Key 不能为空',
+      apiKeyRequired: '需要提供 API Key：直接填写，或填环境变量名 / 密钥文件路径',
       required: '请填写必填项',
       confirmDelete: '确定删除实例「{alias}」？该操作只移除本地配置，不影响 n8n 上的工作流。',
       created: '已添加实例「{alias}」',
@@ -87,6 +94,18 @@ window.__ModuleLoader__.load({
       errorPrefix: '操作失败：',
       loadFailed: '无法读取实例配置',
       defaultBadge: '默认',
+      readOnlyBadge: '只读',
+      credentialEnvLabel: '环境变量',
+      credentialFileLabel: '密钥文件',
+      auditTitle: '审计日志',
+      auditView: '查看日志',
+      auditHide: '收起',
+      auditRefresh: '刷新',
+      auditEmpty: '暂无审计记录——发布、删除、打标签等写操作会记录在这里',
+      auditOk: '成功',
+      auditFail: '失败',
+      auditActorAgent: 'Agent',
+      auditActorWeb: '界面',
       emptyValue: '—',
       reload: '重新加载',
     }
@@ -95,7 +114,7 @@ window.__ModuleLoader__.load({
     const en = {
       title: 'n8n instances',
       description: 'Manage this plugin\'s n8n instances: one alias, base URL and API key per instance. Agents select an instance by alias.',
-      security: 'API keys are stored in plaintext in ~/.dsh/dsh-n8n-plugin.json (mode 0600) and only travel over loopback; this page shows the last four characters.',
+      security: 'API keys may live in plaintext in ~/.dsh/dsh-n8n-plugin.json (mode 0600) or be referenced indirectly via an environment variable name or a key file (resolution order: env > file > inline); traffic stays on loopback and the page shows only the last four characters. State-changing operations are written to a local audit log.',
       loading: 'Loading…',
       empty: 'No n8n instance configured yet. Use “Add instance” to start.',
       add: 'Add instance',
@@ -104,9 +123,15 @@ window.__ModuleLoader__.load({
       alias: 'Alias',
       baseUrl: 'Base URL',
       apiKey: 'API key',
+      apiKeyEnv: 'API key env var (optional)',
+      apiKeyEnvHint: 'Environment variable name (e.g. N8N_PROD_KEY); resolved before the inline key',
+      apiKeyFile: 'API key file path (optional)',
+      apiKeyFileHint: 'Local file path; its first line is the key. Lower priority than the env var',
       descriptionLabel: 'Description (optional)',
       defaultLabel: 'Default',
       defaultHint: 'The instance new workflows default to; only one can be the default.',
+      readOnlyLabel: 'Read-only mode',
+      readOnlyHint: 'Every agent write tool (publish/delete/update/tags/cancel/trigger) and non-GET n8n_api calls are refused.',
       actions: 'Actions',
       test: 'Test',
       edit: 'Edit',
@@ -121,7 +146,7 @@ window.__ModuleLoader__.load({
       baseUrlHint: 'e.g. https://n8n.example.com or http://localhost:5678 (a trailing /api/v1 may be omitted)',
       apiKeyHint: 'Create one in n8n under Settings → n8n API',
       apiKeyKeep: 'Configured ({masked}) — leave blank to keep it',
-      apiKeyRequired: 'API key is required',
+      apiKeyRequired: 'Provide an API key: inline, or via an env var name / key file path',
       required: 'Please fill in the required fields',
       confirmDelete: 'Delete instance “{alias}”? This only removes the local entry; workflows on n8n are untouched.',
       created: 'Added instance “{alias}”',
@@ -130,6 +155,18 @@ window.__ModuleLoader__.load({
       errorPrefix: 'Failed: ',
       loadFailed: 'Could not load the instance registry',
       defaultBadge: 'default',
+      readOnlyBadge: 'read-only',
+      credentialEnvLabel: 'env',
+      credentialFileLabel: 'key file',
+      auditTitle: 'Audit log',
+      auditView: 'View log',
+      auditHide: 'Hide',
+      auditRefresh: 'Refresh',
+      auditEmpty: 'No audit entries yet — publish, delete, tag and other write operations will appear here',
+      auditOk: 'ok',
+      auditFail: 'failed',
+      auditActorAgent: 'Agent',
+      auditActorWeb: 'UI',
       emptyValue: '—',
       reload: 'Reload',
     }
@@ -292,9 +329,23 @@ window.__ModuleLoader__.load({
         baseUrl: '',
         apiKey: '',
         apiKeyMasked: '',
+        apiKeyEnv: '',
+        apiKeyFile: '',
         description: '',
         isDefault: false,
+        readOnly: false,
       }
+    }
+
+    /** Render the credential cell content: env name, file path or masked key. */
+    function credentialCell(instance, t) {
+      if (instance.credentialSource === 'env') {
+        return `${t('credentialEnvLabel')}: ${instance.apiKeyEnv ?? ''}`
+      }
+      if (instance.credentialSource === 'file') {
+        return `${t('credentialFileLabel')}: ${instance.apiKeyFile ?? ''}`
+      }
+      return instance.apiKeyMasked || t('emptyValue')
     }
 
     /** The Settings section component. */
@@ -306,6 +357,25 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false)
       const [notice, setNotice] = useState(null)
       const [tests, setTests] = useState({})
+      const [audit, setAudit] = useState({ open: false, status: 'idle', entries: [], error: null })
+
+      const loadAudit = useCallback(async () => {
+        setAudit((current) => ({ ...current, status: 'loading', error: null }))
+        try {
+          const body = await readJson(await fetch(`${API.audit}?limit=50`, { headers: { accept: 'application/json' } }))
+          setAudit({ open: true, status: 'ready', entries: Array.isArray(body.entries) ? body.entries : [], error: null })
+        } catch (error) {
+          setAudit((current) => ({ ...current, open: true, status: 'error', error: String(error instanceof Error ? error.message : error) }))
+        }
+      }, [])
+
+      const viewAudit = useCallback(() => {
+        if (audit.open) {
+          setAudit((current) => ({ ...current, open: false }))
+          return
+        }
+        loadAudit()
+      }, [audit.open, loadAudit])
 
       const applyRegistry = useCallback((body) => {
         setState({
@@ -345,8 +415,11 @@ window.__ModuleLoader__.load({
           baseUrl: instance.baseUrl,
           apiKey: '',
           apiKeyMasked: instance.apiKeyMasked ?? '',
+          apiKeyEnv: instance.apiKeyEnv ?? '',
+          apiKeyFile: instance.apiKeyFile ?? '',
           description: instance.description ?? '',
           isDefault: instance.isDefault === true,
+          readOnly: instance.readOnly === true,
         })
       }
 
@@ -360,15 +433,25 @@ window.__ModuleLoader__.load({
         if (form === null || busy) return
         const alias = form.alias.trim()
         const baseUrl = form.baseUrl.trim()
-        if (alias === '' || baseUrl === '' || (form.mode === 'create' && form.apiKey.trim() === '')) {
-          setFormError(form.mode === 'create' && form.apiKey.trim() === '' ? t('apiKeyRequired') : t('required'))
+        const hasCredential = form.apiKey.trim() !== '' || form.apiKeyEnv.trim() !== '' || form.apiKeyFile.trim() !== ''
+        if (alias === '' || baseUrl === '' || (form.mode === 'create' && !hasCredential)) {
+          setFormError(form.mode === 'create' && !hasCredential ? t('apiKeyRequired') : t('required'))
           return
         }
         setBusy(true)
         setFormError(null)
         try {
-          const payload = { alias, baseUrl, isDefault: form.isDefault === true }
+          const payload = { alias, baseUrl, isDefault: form.isDefault === true, readOnly: form.readOnly === true }
           if (form.apiKey.trim() !== '') payload.apiKey = form.apiKey.trim()
+          if (form.mode === 'edit') {
+            // Env/file references are prefilled in edit mode, so an emptied
+            // field intentionally clears the reference on the stored entry.
+            payload.apiKeyEnv = form.apiKeyEnv.trim()
+            payload.apiKeyFile = form.apiKeyFile.trim()
+          } else {
+            if (form.apiKeyEnv.trim() !== '') payload.apiKeyEnv = form.apiKeyEnv.trim()
+            if (form.apiKeyFile.trim() !== '') payload.apiKeyFile = form.apiKeyFile.trim()
+          }
           if (form.description.trim() !== '') payload.description = form.description.trim()
           else if (form.mode === 'edit') payload.description = ''
           const body = form.mode === 'create'
@@ -468,8 +551,12 @@ window.__ModuleLoader__.load({
                 : null,
             ]),
             h('td', { key: 'url', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, wordBreak: 'break-all' } }, instance.baseUrl),
-            h('td', { key: 'key', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)' } }, instance.apiKeyMasked || t('emptyValue')),
-            h('td', { key: 'default', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5 } }, instance.isDefault ? h(Pill, { tone: 'brand' }, t('defaultBadge')) : h('span', { style: { color: C.tertiary } }, t('emptyValue'))),
+            h('td', { key: 'key', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', wordBreak: 'break-all' } }, credentialCell(instance, t)),
+            h('td', { key: 'default', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, whiteSpace: 'nowrap' } }, [
+              instance.isDefault ? h(Pill, { key: 'default', tone: 'brand' }, t('defaultBadge')) : null,
+              instance.readOnly === true ? h(Pill, { key: 'readonly', tone: 'danger' }, t('readOnlyBadge')) : null,
+              !instance.isDefault && instance.readOnly !== true ? h('span', { key: 'none', style: { color: C.tertiary } }, t('emptyValue')) : null,
+            ]),
             h('td', { key: 'actions', style: { padding: '8px', borderBottom: '1px solid ' + C.border, textAlign: 'right', whiteSpace: 'nowrap' } }, [
               h(Button, { key: 'test', variant: 'ghost', disabled: busy || testState?.status === 'running', onClick: () => test(instance) }, t('test')),
               h(Button, { key: 'edit', variant: 'ghost', disabled: busy, onClick: () => openEdit(instance) }, t('edit')),
@@ -523,10 +610,37 @@ window.__ModuleLoader__.load({
               autoComplete: 'new-password',
               onChange: (event) => setForm({ ...form, apiKey: event.target.value }),
             })),
+            h(Field, { key: 'keyEnv', label: t('apiKeyEnv'), hint: t('apiKeyEnvHint') },
+              h(TextInput, {
+                value: form.apiKeyEnv,
+                placeholder: 'N8N_PROD_KEY',
+                autoComplete: 'off',
+                onChange: (event) => setForm({ ...form, apiKeyEnv: event.target.value }),
+              })),
+            h(Field, { key: 'keyFile', label: t('apiKeyFile'), hint: t('apiKeyFileHint') },
+              h(TextInput, {
+                value: form.apiKeyFile,
+                placeholder: '~/.secrets/n8n-prod.key',
+                autoComplete: 'off',
+                onChange: (event) => setForm({ ...form, apiKeyFile: event.target.value }),
+              })),
             h(Field, { key: 'desc', label: t('descriptionLabel') }, h(TextInput, {
               value: form.description,
               onChange: (event) => setForm({ ...form, description: event.target.value }),
             })),
+          ]),
+          h('label', { key: 'readOnly', style: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: C.secondary } }, [
+            h('input', {
+              key: 'box',
+              type: 'checkbox',
+              checked: form.readOnly,
+              onChange: (event) => setForm({ ...form, readOnly: event.target.checked }),
+              style: { marginTop: 3 },
+            }),
+            h('span', { key: 'text' }, [
+              h('span', { key: 'label', style: { color: C.primary, fontWeight: 500 } }, t('readOnlyLabel')),
+              h('span', { key: 'hint', style: { display: 'block', color: C.tertiary, fontSize: 11.5 } }, t('readOnlyHint')),
+            ]),
           ]),
           h('label', { key: 'default', style: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: C.secondary } }, [
             h('input', {
@@ -549,6 +663,59 @@ window.__ModuleLoader__.load({
         ])
       }
 
+      const auditTime = (ts) => (typeof ts === 'string' && ts.length >= 19 ? ts.slice(0, 19).replace('T', ' ') : '')
+      const auditEntries = audit.entries.map((entry, index) => h('div', {
+        key: index,
+        style: {
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          padding: '4px 0',
+          borderBottom: '1px solid ' + C.border,
+          fontSize: 12,
+          color: C.secondary,
+        },
+      }, [
+        h('span', { key: 'ts', style: { color: C.tertiary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', fontSize: 11.5 } }, auditTime(entry.ts)),
+        h('span', { key: 'actor', style: { color: C.tertiary } }, entry.actor === 'web' ? t('auditActorWeb') : t('auditActorAgent')),
+        h('span', { key: 'what', style: { color: C.primary, fontWeight: 500 } }, entry.tool ?? entry.action ?? ''),
+        entry.alias !== undefined ? h('span', { key: 'alias' }, entry.alias) : null,
+        entry.target !== undefined && entry.target !== '' ? h('span', { key: 'target', style: { color: C.tertiary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', fontSize: 11.5, wordBreak: 'break-all' } }, entry.target) : null,
+        h('span', { key: 'ok', style: { color: entry.ok === true ? C.success : C.danger } }, entry.ok === true
+          ? t('auditOk')
+          : `${t('auditFail')}${typeof entry.error === 'string' && entry.error !== '' ? '：' + entry.error : ''}`),
+      ]))
+
+      const auditSection = h('div', { key: 'audit', style: { display: 'flex', flexDirection: 'column', gap: 8 } }, [
+        h('div', { key: 'bar', style: { display: 'flex', alignItems: 'center', gap: 8 } }, [
+          h('span', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t('auditTitle')),
+          h('span', { key: 'hint', style: { color: C.tertiary, fontSize: 11.5 } }, '~/.dsh/dsh-n8n-plugin.audit.log'),
+          h('span', { key: 'spacer', style: { flex: 1 } }),
+          audit.open ? h(Button, { key: 'refresh', variant: 'ghost', disabled: audit.status === 'loading', onClick: loadAudit }, t('auditRefresh')) : null,
+          h(Button, { key: 'toggle', variant: 'ghost', onClick: viewAudit }, audit.open ? t('auditHide') : t('auditView')),
+        ]),
+        audit.open
+          ? h('div', {
+            key: 'list',
+            style: {
+              maxHeight: 240,
+              overflowY: 'auto',
+              padding: '6px 10px',
+              border: '1px solid ' + C.border,
+              borderRadius: 8,
+              background: C.layer3,
+            },
+          }, audit.status === 'loading'
+            ? h('p', { key: 'loading', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('loading'))
+            : audit.status === 'error'
+              ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12.5 } }, `${t('errorPrefix')}${audit.error ?? ''}`)
+              : audit.entries.length === 0
+                ? h('p', { key: 'empty', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('auditEmpty'))
+                : auditEntries)
+          : null,
+      ])
+
       return h('div', {
         style: {
           display: 'flex',
@@ -565,6 +732,7 @@ window.__ModuleLoader__.load({
           ? h('p', { key: 'notice', style: { margin: 0, color: C.success, fontSize: 12, lineHeight: '17px' } }, notice)
           : null,
         h('div', { key: 'body' }, body),
+        auditSection,
         editor,
       ])
     }
