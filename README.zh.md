@@ -15,7 +15,7 @@
   <img alt="Node.js" src="https://img.shields.io/badge/node-%5E22.19_%7C%7C_%3E%3D24-339933?logo=nodedotjs">
   <img alt="DSH" src="https://img.shields.io/badge/DSH-%3E%3D0.2.1--rc.2-2563EB">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-API_v1-EA4B71?logo=n8n">
-  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-21-8A5CF6">
+  <img alt="agent tools" src="https://img.shields.io/badge/agent_tools-24-8A5CF6">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-3DA639">
 </p>
 
@@ -31,7 +31,7 @@
 
 ## ✨ 为什么选它
 
-大多数 n8n 集成方式，是把实例地址和 API Key 反复粘进对话。本插件让 n8n 成为 DeepSeek Harness 的一等公民：一个设置页、一份实例清单、21 个共享它的 Agent 工具。
+大多数 n8n 集成方式，是把实例地址和 API Key 反复粘进对话。本插件让 n8n 成为 DeepSeek Harness 的一等公民：一个设置页、一份实例清单、24 个共享它的 Agent 工具。
 
 ### 一个别名，直达任意环境
 实例只需在 **设置 → n8n 实例** 登记一次——别名（`prod` / `staging` / `local`…）、实例地址、API Key。所有工具按别名指定目标实例，同一段指令可以指向任何环境，无需重复粘贴凭据。
@@ -50,7 +50,7 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 
 ## 🧩 Agent 工具
 
-21 个工具，全部按别名寻址：
+24 个工具，全部按别名寻址：
 
 | 工具 | 作用 |
 | --- | --- |
@@ -74,6 +74,9 @@ API Key 只存 `~/.dsh/dsh-n8n-plugin.json`（`0600`）。所有响应只回显�
 | `n8n_tag_update` | 重命名标签（引用它的工作流同步生效） |
 | `n8n_tag_delete` | 删除标签（会从所有工作流上移除） |
 | `n8n_credentials` | 列出凭证名称与类型（不含密钥值） |
+| `n8n_variables` | 实例变量的读取 / 按 key 设置（upsert）/ 删除；工作流里用 `$vars.<key>` 引用 |
+| `n8n_datatables` | Data Table 的列表 / 详情 / 建表 / 删除（n8n ≥ 2.7） |
+| `n8n_datatable_rows` | Data Table 行的查询 / 插入 / 更新 / upsert / 删除 / 清空（条件过滤，删改必带 filter） |
 | `n8n_api` | 通用 `/api/v1` 请求（路径需以 `/` 开头） |
 
 工作流 JSON 规范、**实测踩坑清单**与**开箱模板**见 [`knowledge/workflow-guide.md`](knowledge/workflow-guide.md)（模板在 [`knowledge/templates/`](knowledge/templates/) 下：webhook 线索、定时同步、错误通知、AI 对话四个模式，改参数即可用）。`announceToAgent` 开启时，系统提示会给 Agent 该文件的绝对路径，供其按需 `read`。工具描述与用户可见文案为中文；工具名、参数名与 n8n 协议词汇（字段名、节点类型、状态枚举）有意保留英文。
@@ -138,7 +141,7 @@ dsh plugin --profile web add link:<本包所在路径>
 ```
 设置页（浏览器）                                 Agent（模型）
   │                                              │
-  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 21 个 n8n_* 工具
+  ├─ GET/POST/PATCH/DELETE ───┐                  ├─ 24 个 n8n_* 工具
   │  /api/dsh-n8n-plugin/*    │                  │
   ▼                           ▼                  ▼
 ┌─────────── 回环围栏（仅 127.0.0.1 / ::1）─────────────────┐
@@ -149,7 +152,7 @@ dsh plugin --profile web add link:<本包所在路径>
 └───────────────────────────────────────────────────────────┘
 ```
 
-- **宿主半边**——`lib/index.js` 在一个 `apply()` 里注册路由、21 个工具与可选提示段；`lib/store.js` 管理实例清单（原子写、`0600`、损坏隔离）；`lib/n8n.js` 是 API v1 客户端（30 秒超时、合并中止信号、`accept-encoding: identity`），外加 Webhook 直连调用与执行轮询等待；`lib/http.js` 落实回环围栏；`lib/mount-once.js` 保证同一 package/profile 只挂载一份。
+- **宿主半边**——`lib/index.js` 在一个 `apply()` 里注册路由、24 个工具与可选提示段；`lib/store.js` 管理实例清单（原子写、`0600`、损坏隔离）；`lib/n8n.js` 是 API v1 客户端（30 秒超时、合并中止信号、`accept-encoding: identity`），外加 Webhook 直连调用与执行轮询等待；`lib/http.js` 落实回环围栏；`lib/mount-once.js` 保证同一 package/profile 只挂载一份。
 - **浏览器半边**——`client/index.js` 渲染设置分区，走同一组路由，GUI 与 Agent 永远一致。
 - **提示词引导**——`lib/guidance.js` 生成系统提示段；仅当会话中 n8n_* 工具可见时才渲染。
 
@@ -190,8 +193,9 @@ npm run check             # 语法检查（全部源文件）
 lib/index.js             插件入口（Config、apply、路由/工具/提示段注册）
 lib/store.js             实例存储（原子写、0600、损坏文件隔离）
 lib/n8n.js               n8n 公开 API v1 客户端（含 webhook 直连与执行等待）
+lib/execution-errors.js  执行错误模式库（原始报错 → 可行动的修复提示）
 lib/routes.js            /api/dsh-n8n-plugin 路由（回环围栏）
-lib/tool-specs.js        21 个 Agent 工具定义（参数、输出 schema、render、execute）
+lib/tool-specs.js        24 个 Agent 工具定义（参数、输出 schema、render、execute）
 lib/tools.js             唯一的 defineTool() 适配层
 lib/render.js            纯函数渲染器（供各 render 钩子复用）
 lib/workflow-validate.js 离线工作流校验
@@ -220,15 +224,18 @@ npm publish              # 已登录 npm 时发布（未 scoped 包用默认 reg
 
 ## 🤖 模型体验
 
-- 21 个 `n8n_*` 工具（见上表）；`n8n_instances` 与 `n8n_workflow_validate` 是最安全的只读入口。
-- 运行闭环：`n8n_workflow_publish` 发布 → `n8n_webhook_call` 触发并等待 → `n8n_execution_get` 复查，一条链路覆盖「部署、运行、验证」。
+- 24 个 `n8n_*` 工具（见上表）；`n8n_instances`、`n8n_workflow_validate` 与 `n8n_instances` 的能力探测（`action:"probe"`）是最安全的只读入口。
+- 运行闭环：`n8n_workflow_publish` 发布 → `n8n_webhook_call` 触发并等待 → `n8n_execution_get` 复查，一条链路覆盖「部署、运行、验证」；失败执行的渲染会附带「错误模式提示」，把原始报错翻译成下一步动作。
 - 日常维护各一步到位：`n8n_workflow_clone`（连同标签复制工作流，副本默认不发布）、`n8n_workflow_tags`（读取/替换工作流标签）、`n8n_tag_create/update/delete`，以及用 `n8n_execution_cancel` 中止卡住的运行。
+- 实例数据落地两条路：n8n ≥ 2.7 的 Data Table（`n8n_datatables` / `n8n_datatable_rows`），或实例变量（`n8n_variables`，工作流里 `$vars.<key>` 引用）——先 `action:"probe"` 看实例支持哪个。
 - 可选系统提示段（`announceToAgent`）：教 Agent 别名约定，并指向 `knowledge/workflow-guide.md` 获取完整工作流 JSON 规范。
 - 破坏性操作（发布、删除工作流/标签、取消执行）由提示段中的「先向用户确认」规则把关。
 
 ## ⚠️ 已知限制
 
 - n8n 公开 API 仍没有跨版本稳定的「手动执行工作流」端点；`n8n_webhook_call` 通过 Webhook 触发器补上了这条路径——要求工作流里有 Webhook 节点且已发布（或用 `mode:"test"` 配合编辑器监听测试事件）。不含 Webhook 触发器的工作流，请在 n8n 界面执行，再用 `n8n_executions` / `n8n_execution_get` 查看结果。
+- 实例变量（`n8n_variables`）需要 n8n Cloud Pro/Enterprise 或自托管 Business/Enterprise 许可，且仅实例 owner/admin 可写；未授权时实例返回 403，用 `n8n_instances` 的 `action:"probe"` 可先探测。
+- Data Table 工具需要 n8n ≥ 2.7（公开 API 才暴露 `/data-tables`）；列只能在建表时定义（本插件未暴露列管理端点），行删除/更新/upsert 必须显式带 filter——不带条件的调用在客户端就被拒绝，防止整表误伤。
 - 不同 n8n 版本的公开 API 端点与字段有差异（例如 `publish/unpublish` 与 `activate/deactivate` 并存、部分版本不返回 `versionId`）。插件对发布/取消发布做了 404 回退；`n8n_workflow_update` 在实例提供 `versionId` 时做乐观并发校验（版本不一致直接拒绝写入），不提供时照常写入并在结果里标注「无法校验」；其他差异可用 `n8n_api` 直达接口。
 - 标签增改删、工作流标签读写与执行取消依赖实例暴露对应公开 API 端点（`/tags`、`/workflows/{id}/tags`、`/executions/{id}/stop`）。较旧的 n8n 会返回 404；请升级实例，或改用 `n8n_api` 调用它实际提供的端点。
 - n8n 的标签名上限为 24 个字符，且 API 会把超长名称报成误导性的 `409 Tag already exists`；`n8n_tag_create` / `n8n_tag_update` 在发送前就拒绝超长名称。
