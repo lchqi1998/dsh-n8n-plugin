@@ -32,7 +32,11 @@ window.__ModuleLoader__.load({
       instances: '/api/dsh-n8n-plugin/instances',
       test: '/api/dsh-n8n-plugin/test',
       audit: '/api/dsh-n8n-plugin/audit',
+      health: '/api/dsh-n8n-plugin/health',
     }
+
+    /** GitHub repository this plugin is published from (star button). */
+    const REPO_URL = 'https://github.com/lchqi1998/dsh-n8n-plugin'
 
     /** Theme tokens with neutral fallbacks. */
     const C = {
@@ -107,6 +111,20 @@ window.__ModuleLoader__.load({
       auditActorAgent: 'Agent',
       auditActorWeb: '界面',
       emptyValue: '—',
+      healthTitle: '实例健康',
+      healthHint: '工作流总数、已发布数与最近执行抽样（只读，不改动实例）',
+      healthView: '查看健康',
+      healthHide: '收起',
+      healthRefresh: '刷新',
+      healthEmpty: '暂无实例——先在上方添加一个实例',
+      healthUnreachable: '不可达',
+      healthNoExecutions: '暂无执行记录',
+      healthWorkflows: '工作流 {total} · 已发布 {active}',
+      healthExecutions: '成功 {ok} · 失败 {fail} · 运行中 {running}',
+      healthExecutionsOther: '其他 {count}',
+      healthFailureRate: '失败率 {rate}',
+      starTitle: '觉得有用就到 GitHub 点个 Star（新窗口打开仓库）',
+      starButton: 'GitHub Star',
       reload: '重新加载',
     }
 
@@ -168,6 +186,20 @@ window.__ModuleLoader__.load({
       auditActorAgent: 'Agent',
       auditActorWeb: 'UI',
       emptyValue: '—',
+      healthTitle: 'Instance health',
+      healthHint: 'Workflow totals and a bounded sample of recent executions (read-only)',
+      healthView: 'View health',
+      healthHide: 'Hide',
+      healthRefresh: 'Refresh',
+      healthEmpty: 'No instances yet — add one above',
+      healthUnreachable: 'unreachable',
+      healthNoExecutions: 'No executions yet',
+      healthWorkflows: '{total} workflows · {active} active',
+      healthExecutions: '{ok} ok · {fail} failed · {running} running',
+      healthExecutionsOther: '{count} other',
+      healthFailureRate: 'failure rate {rate}',
+      starTitle: 'If this plugin helps you, star it on GitHub (opens in a new tab)',
+      starButton: 'Star on GitHub',
       reload: 'Reload',
     }
 
@@ -302,6 +334,7 @@ window.__ModuleLoader__.load({
       const tones = {
         neutral: { color: C.secondary, background: C.layer3, borderColor: C.border },
         success: { color: C.success, background: 'transparent', borderColor: C.success },
+        warn: { color: C.warn, background: 'transparent', borderColor: C.warn },
         danger: { color: C.danger, background: 'transparent', borderColor: C.danger },
         brand: { color: C.brand, background: 'transparent', borderColor: C.brand },
       }
@@ -318,6 +351,38 @@ window.__ModuleLoader__.load({
           whiteSpace: 'nowrap',
         },
       }, children)
+    }
+
+    /** The GitHub star link: an anchor styled like the ghost buttons. */
+    function StarLink({ t }) {
+      const [hover, setHover] = useState(false)
+      return h('a', {
+        href: REPO_URL,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        title: t('starTitle'),
+        style: {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          cursor: 'pointer',
+          borderRadius: 8,
+          padding: '5px 12px',
+          fontSize: 12.5,
+          lineHeight: '18px',
+          border: '1px solid ' + C.borderStrong,
+          background: hover ? C.layer3 : 'transparent',
+          color: C.primary,
+          textDecoration: 'none',
+          whiteSpace: 'nowrap',
+          transition: 'background .12s',
+        },
+        onMouseEnter: () => setHover(true),
+        onMouseLeave: () => setHover(false),
+      }, [
+        h('span', { key: 'star', style: { color: '#f5b301', fontSize: 13 } }, '★'),
+        t('starButton'),
+      ])
     }
 
     /** Empty editable form state. */
@@ -376,6 +441,32 @@ window.__ModuleLoader__.load({
         }
         loadAudit()
       }, [audit.open, loadAudit])
+
+      const [health, setHealth] = useState({ open: false, status: 'idle', instances: [], error: null })
+
+      const loadHealth = useCallback(async () => {
+        setHealth((current) => ({ ...current, status: 'loading', error: null }))
+        try {
+          const body = await readJson(await fetch(API.health, { headers: { accept: 'application/json' } }))
+          setHealth((current) => ({
+            ...current,
+            open: true,
+            status: 'ready',
+            instances: Array.isArray(body.instances) ? body.instances : [],
+            error: null,
+          }))
+        } catch (error) {
+          setHealth((current) => ({ ...current, open: true, status: 'error', error: String(error instanceof Error ? error.message : error) }))
+        }
+      }, [])
+
+      const viewHealth = useCallback(() => {
+        if (health.open) {
+          setHealth((current) => ({ ...current, open: false }))
+          return
+        }
+        loadHealth()
+      }, [health.open, loadHealth])
 
       const applyRegistry = useCallback((body) => {
         setState({
@@ -512,6 +603,7 @@ window.__ModuleLoader__.load({
       const header = h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, [
         title,
         h('span', { key: 'spacer', style: { flex: 1 } }),
+        h(StarLink, { key: 'star', t }),
         h(Button, { key: 'add', variant: 'primary', onClick: openCreate, disabled: busy }, t('add')),
       ])
 
@@ -716,6 +808,92 @@ window.__ModuleLoader__.load({
           : null,
       ])
 
+      // One health row per instance; a failed instance keeps its own entry.
+      const healthRowStyle = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'baseline',
+        gap: 8,
+        padding: '6px 0',
+        borderBottom: '1px solid ' + C.border,
+        fontSize: 12,
+        lineHeight: '18px',
+        color: C.secondary,
+      }
+      const healthRows = health.instances.map((item, index) => {
+        const key = item !== null && typeof item === 'object' && typeof item.alias === 'string' ? item.alias : String(index)
+        if (item === null || typeof item !== 'object') {
+          return h('div', { key, style: healthRowStyle }, '—')
+        }
+        const head = h('span', { key: 'alias', style: { color: C.primary, fontWeight: 500 } }, item.alias ?? '—')
+        if (item.ok !== true) {
+          return h('div', { key, style: healthRowStyle }, [
+            head,
+            h(Pill, { key: 'pill', tone: 'danger' }, t('healthUnreachable')),
+            h('span', { key: 'error', style: { color: C.danger, wordBreak: 'break-all' } }, String(item.error ?? '').slice(0, 140)),
+          ])
+        }
+        const workflows = item.workflows ?? {}
+        const executions = item.executions ?? {}
+        const counts = executions.counts ?? {}
+        const sampled = executions.sampled ?? 0
+        const success = counts.success ?? 0
+        const failed = (counts.error ?? 0) + (counts.crashed ?? 0)
+        const running = (counts.running ?? 0) + (counts.new ?? 0)
+        const other = Math.max(0, sampled - success - failed - running)
+        const rate = typeof executions.failureRate === 'number' ? executions.failureRate : null
+        const execText = sampled > 0
+          ? format(t('healthExecutions'), { ok: success, fail: failed, running })
+            + (other > 0 ? ` · ${format(t('healthExecutionsOther'), { count: other })}` : '')
+          : null
+        return h('div', { key, style: healthRowStyle }, [
+          head,
+          h(Pill, { key: 'latency', tone: 'neutral' }, `${item.latencyMs ?? 0}ms`),
+          h('span', { key: 'workflows' }, format(t('healthWorkflows'), {
+            total: `${workflows.total ?? 0}${workflows.truncated === true ? '+' : ''}`,
+            active: workflows.active ?? 0,
+          })),
+          execText === null
+            ? h('span', { key: 'noexec', style: { color: C.tertiary } }, t('healthNoExecutions'))
+            : h('span', { key: 'exec' }, execText),
+          rate !== null
+            ? h(Pill, {
+              key: 'rate',
+              tone: rate >= 0.3 ? 'danger' : rate >= 0.1 ? 'warn' : 'success',
+            }, format(t('healthFailureRate'), { rate: `${Math.round(rate * 100)}%` }))
+            : null,
+        ])
+      })
+
+      const healthSection = h('div', { key: 'health', style: { display: 'flex', flexDirection: 'column', gap: 8 } }, [
+        h('div', { key: 'bar', style: { display: 'flex', alignItems: 'center', gap: 8 } }, [
+          h('span', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t('healthTitle')),
+          h('span', { key: 'hint', style: { color: C.tertiary, fontSize: 11.5 } }, t('healthHint')),
+          h('span', { key: 'spacer', style: { flex: 1 } }),
+          health.open ? h(Button, { key: 'refresh', variant: 'ghost', disabled: health.status === 'loading', onClick: loadHealth }, t('healthRefresh')) : null,
+          h(Button, { key: 'toggle', variant: 'ghost', onClick: viewHealth }, health.open ? t('healthHide') : t('healthView')),
+        ]),
+        health.open
+          ? h('div', {
+            key: 'list',
+            style: {
+              maxHeight: 260,
+              overflowY: 'auto',
+              padding: '6px 10px',
+              border: '1px solid ' + C.border,
+              borderRadius: 8,
+              background: C.layer3,
+            },
+          }, health.status === 'loading'
+            ? h('p', { key: 'loading', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('loading'))
+            : health.status === 'error'
+              ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12.5 } }, `${t('errorPrefix')}${health.error ?? ''}`)
+              : health.instances.length === 0
+                ? h('p', { key: 'empty', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('healthEmpty'))
+                : healthRows)
+          : null,
+      ])
+
       return h('div', {
         style: {
           display: 'flex',
@@ -733,6 +911,7 @@ window.__ModuleLoader__.load({
           : null,
         h('div', { key: 'body' }, body),
         auditSection,
+        healthSection,
         editor,
       ])
     }

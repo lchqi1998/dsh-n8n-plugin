@@ -95,6 +95,16 @@ The workflow-JSON reference, a field-tested **pitfall list** and **ready-made te
 
 The **Test** button calls `GET /workflows?limit=1` on the spot and reports latency — or the exact failure: connection refused, DNS, timeout, TLS, 401.
 
+### Instance health panel
+
+The **Instance health** section on the settings page pulls a read-only overview of **all** instances at once:
+
+- One row per instance: latency, workflow totals with the active count, a sample of the last 100 executions (ok / failed / running) and the failure rate (yellow at ≥10%, red at ≥30%);
+- An unreachable instance degrades to its own "unreachable" entry with the error — the rest still render;
+- Bounded server-side: at most 4 workflow pages (≈1000 workflows, marked with `+` beyond) plus 1 execution page, 8 s per request and a 25 s total budget.
+
+The header also carries a **★ Star on GitHub** button — if the plugin helps you, leave a star.
+
 All instance data lives in one file:
 
 ```
@@ -218,7 +228,7 @@ npm publish              # publishes to the default registry once you are logged
 ## 🔐 Permissions & compatibility
 
 - **Permissions**: writes one JSON file under the harness home (`~/.dsh` / `$DSH_HOME`); makes outbound HTTP(S) calls to the registered n8n instances; serves a loopback-only route family through the host's web server. **No** command execution, no shell.
-- **Compatibility**: DSH `>= 0.2.1-rc.2` (declared as both `engines.dsh` and `dsh.engines.dsh`), Node.js `^22.19.0 || >=24`, n8n public API v1 (1.x and later; publishing has a modern/legacy fallback).
+- **Compatibility**: DSH `>= 0.2.1-rc.2 and < 0.2.2-rc.1` (declared as both `engines.dsh` and `dsh.engines.dsh`), Node.js `^22.19.0 || >=24`, n8n public API v1 (1.x and later; publishing has a modern/legacy fallback).
 - **Lifecycle**: no `preinstall` / `install` / `postinstall` scripts — install and use.
 - **Dependency posture**: the only runtime dependency is `@deepseek-ai/schemastery`; every `@deepseek-ai/dsh-*` package and `react` are optional peer dependencies — the plugin never re-installs, replaces or shadows official components.
 
