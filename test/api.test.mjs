@@ -211,13 +211,38 @@ function makeToolHarness(overrides = {}, storeOverrides = {}) {
   return { tools, byName, calls, audits }
 }
 
+const VALID_DSH_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'null', 'array', 'object', 'json'])
+
+function assertValidDshSchema(node, path) {
+  assert.ok(node !== null && typeof node === 'object', `${path} must be an object`)
+  if (node.required !== undefined) {
+    assert.equal(node.required, true, `${path}.required must be true when present`)
+  }
+  if (Array.isArray(node.oneOf)) {
+    node.oneOf.forEach((branch, index) => assertValidDshSchema(branch, `${path}.oneOf[${index}]`))
+    return
+  }
+  assert.ok(VALID_DSH_TYPES.has(node.type), `${path}.type (${String(node.type)}) must be a valid DSH schema type or use oneOf`)
+  if (node.type === 'array' && node.items !== undefined) {
+    assertValidDshSchema(node.items, `${path}.items`)
+  }
+  if (node.type === 'object' && node.properties !== undefined) {
+    for (const [key, prop] of Object.entries(node.properties)) {
+      assertValidDshSchema(prop, `${path}.properties.${key}`)
+    }
+  }
+}
+
 test('every registered tool is named in the guidance', () => {
   const { tools } = makeToolHarness()
   assert.equal(tools.length, 25)
   assert.deepEqual(tools.map(tool => tool.name), N8N_TOOL_NAMES)
   for (const tool of tools) {
     for (const [param, def] of Object.entries(tool.parameters ?? {})) {
-      assert.ok(def.required === undefined || def.required === true, `${tool.name}.parameters.${param}.required must be true or omitted`)
+      assertValidDshSchema(def, `${tool.name}.parameters.${param}`)
+    }
+    if (tool.output?.schema !== undefined) {
+      assertValidDshSchema(tool.output.schema, `${tool.name}.output.schema`)
     }
   }
 })
