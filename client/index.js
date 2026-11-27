@@ -203,8 +203,8 @@ window.__ModuleLoader__.load({
       reload: 'Reload',
     }
 
-    /** Module-level translate fallback, rewired by {@link apply}. */
-    let fallbackT = (key) => (zh[key] !== undefined ? zh[key] : key)
+    /** Immutable Simplified Chinese translate fallback when host locale is absent. */
+    const defaultT = (key) => (zh[key] !== undefined ? zh[key] : key)
 
     /** Interpolate `{name}` placeholders. */
     function format(template, values) {
@@ -419,9 +419,292 @@ window.__ModuleLoader__.load({
       return instance.apiKeyMasked || t('emptyValue')
     }
 
+    /** Instance table component. */
+    function InstanceTable({ instances, tests, busy, t, onTest, onEdit, onDelete }) {
+      const headCells = [t('alias'), t('baseUrl'), t('apiKey'), t('defaultLabel'), t('actions')]
+      const head = h('tr', null, headCells.map((label, index) => h('th', {
+        key: label + index,
+        style: {
+          textAlign: index === 4 ? 'right' : 'left',
+          padding: '7px 8px',
+          borderBottom: '1px solid ' + C.border,
+          color: C.tertiary,
+          fontSize: 11.5,
+          fontWeight: 500,
+          whiteSpace: 'nowrap',
+        },
+      }, label)))
+      const rows = instances.map((instance) => {
+        const testState = tests[instance.alias]
+        const cells = [
+          h('td', { key: 'alias', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.primary } }, [
+            h('span', { key: 'a', style: { fontWeight: 500 } }, instance.alias),
+            testState !== undefined
+              ? h('div', { key: 't', style: { marginTop: 2 } }, h(Pill, {
+                tone: testState.status === 'ok' ? 'success' : testState.status === 'fail' ? 'danger' : 'neutral',
+              }, testState.status === 'running' ? t('testing') : testState.status === 'ok' ? (testState.text ?? t('testOk')) : String(testState.text).slice(0, 120)))
+              : null,
+          ]),
+          h('td', { key: 'url', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, wordBreak: 'break-all' } }, instance.baseUrl),
+          h('td', { key: 'key', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', wordBreak: 'break-all' } }, credentialCell(instance, t)),
+          h('td', { key: 'default', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, whiteSpace: 'nowrap' } }, [
+            instance.isDefault ? h(Pill, { key: 'default', tone: 'brand' }, t('defaultBadge')) : null,
+            instance.readOnly === true ? h(Pill, { key: 'readonly', tone: 'danger' }, t('readOnlyBadge')) : null,
+            !instance.isDefault && instance.readOnly !== true ? h('span', { key: 'none', style: { color: C.tertiary } }, t('emptyValue')) : null,
+          ]),
+          h('td', { key: 'actions', style: { padding: '8px', borderBottom: '1px solid ' + C.border, textAlign: 'right', whiteSpace: 'nowrap' } }, [
+            h(Button, { key: 'test', variant: 'ghost', disabled: busy || testState?.status === 'running', onClick: () => onTest(instance) }, t('test')),
+            h(Button, { key: 'edit', variant: 'ghost', disabled: busy, onClick: () => onEdit(instance) }, t('edit')),
+            h(Button, { key: 'delete', variant: 'danger', disabled: busy, onClick: () => onDelete(instance) }, t('delete')),
+          ]),
+        ]
+        return h('tr', { key: instance.alias }, cells)
+      })
+      return h('div', { style: { overflowX: 'auto' } }, h('table', {
+        style: { width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' },
+      }, [h('thead', { key: 'head' }, head), h('tbody', { key: 'body' }, rows)]))
+    }
+
+    /** Create/edit instance form component. */
+    function InstanceEditor({ form, formError, busy, t, onChange, onClose, onSubmit }) {
+      return h('div', {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          padding: 14,
+          borderRadius: 10,
+          border: '1px solid ' + C.border,
+          background: C.layer3,
+        },
+      }, [
+        h('div', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t(form.mode === 'create' ? 'createTitle' : 'editTitle')),
+        h('div', { key: 'fields', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 } }, [
+          h(Field, { key: 'alias', label: t('alias'), hint: t('aliasHint') },
+            h(TextInput, {
+              value: form.alias,
+              placeholder: 'prod',
+              onChange: (event) => onChange({ ...form, alias: event.target.value }),
+            })),
+          h(Field, { key: 'url', label: t('baseUrl'), hint: t('baseUrlHint') },
+            h(TextInput, {
+              value: form.baseUrl,
+              placeholder: 'https://n8n.example.com',
+              onChange: (event) => onChange({ ...form, baseUrl: event.target.value }),
+            })),
+          h(Field, {
+            key: 'key',
+            label: t('apiKey'),
+            hint: form.mode === 'edit' && form.apiKeyMasked !== ''
+              ? format(t('apiKeyKeep'), { masked: form.apiKeyMasked })
+              : t('apiKeyHint'),
+          }, h(TextInput, {
+            value: form.apiKey,
+            type: 'password',
+            placeholder: form.mode === 'edit' ? '••••••••' : 'n8n_api_...',
+            autoComplete: 'new-password',
+            onChange: (event) => onChange({ ...form, apiKey: event.target.value }),
+          })),
+          h(Field, { key: 'keyEnv', label: t('apiKeyEnv'), hint: t('apiKeyEnvHint') },
+            h(TextInput, {
+              value: form.apiKeyEnv,
+              placeholder: 'N8N_PROD_KEY',
+              autoComplete: 'off',
+              onChange: (event) => onChange({ ...form, apiKeyEnv: event.target.value }),
+            })),
+          h(Field, { key: 'keyFile', label: t('apiKeyFile'), hint: t('apiKeyFileHint') },
+            h(TextInput, {
+              value: form.apiKeyFile,
+              placeholder: '~/.secrets/n8n-prod.key',
+              autoComplete: 'off',
+              onChange: (event) => onChange({ ...form, apiKeyFile: event.target.value }),
+            })),
+          h(Field, { key: 'desc', label: t('descriptionLabel') }, h(TextInput, {
+            value: form.description,
+            onChange: (event) => onChange({ ...form, description: event.target.value }),
+          })),
+        ]),
+        h('label', { key: 'readOnly', style: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: C.secondary } }, [
+          h('input', {
+            key: 'box',
+            type: 'checkbox',
+            checked: form.readOnly,
+            onChange: (event) => onChange({ ...form, readOnly: event.target.checked }),
+            style: { marginTop: 3 },
+          }),
+          h('span', { key: 'text' }, [
+            h('span', { key: 'label', style: { color: C.primary, fontWeight: 500 } }, t('readOnlyLabel')),
+            h('span', { key: 'hint', style: { display: 'block', color: C.tertiary, fontSize: 11.5 } }, t('readOnlyHint')),
+          ]),
+        ]),
+        h('label', { key: 'default', style: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: C.secondary } }, [
+          h('input', {
+            key: 'box',
+            type: 'checkbox',
+            checked: form.isDefault,
+            onChange: (event) => onChange({ ...form, isDefault: event.target.checked }),
+            style: { marginTop: 3 },
+          }),
+          h('span', { key: 'text' }, [
+            h('span', { key: 'label', style: { color: C.primary, fontWeight: 500 } }, t('defaultLabel')),
+            h('span', { key: 'hint', style: { display: 'block', color: C.tertiary, fontSize: 11.5 } }, t('defaultHint')),
+          ]),
+        ]),
+        formError !== null ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12, lineHeight: '17px', wordBreak: 'break-word' } }, `${t('errorPrefix')}${formError}`) : null,
+        h('div', { key: 'actions', style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } }, [
+          h(Button, { key: 'cancel', variant: 'ghost', onClick: onClose, disabled: busy }, t('cancel')),
+          h(Button, { key: 'save', variant: 'primary', onClick: onSubmit, disabled: busy }, busy ? t('saving') : t('save')),
+        ]),
+      ])
+    }
+
+    /** Audit log collapsible panel component. */
+    function AuditPanel({ audit, t, onToggle, onRefresh }) {
+      const auditTime = (ts) => (typeof ts === 'string' && ts.length >= 19 ? ts.slice(0, 19).replace('T', ' ') : '')
+      const auditEntries = audit.entries.map((entry, index) => h('div', {
+        key: index,
+        style: {
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          padding: '4px 0',
+          borderBottom: '1px solid ' + C.border,
+          fontSize: 12,
+          color: C.secondary,
+        },
+      }, [
+        h('span', { key: 'ts', style: { color: C.tertiary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', fontSize: 11.5 } }, auditTime(entry.ts)),
+        h('span', { key: 'actor', style: { color: C.tertiary } }, entry.actor === 'web' ? t('auditActorWeb') : t('auditActorAgent')),
+        h('span', { key: 'what', style: { color: C.primary, fontWeight: 500 } }, entry.tool ?? entry.action ?? ''),
+        entry.alias !== undefined ? h('span', { key: 'alias' }, entry.alias) : null,
+        entry.target !== undefined && entry.target !== '' ? h('span', { key: 'target', style: { color: C.tertiary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', fontSize: 11.5, wordBreak: 'break-all' } }, entry.target) : null,
+        h('span', { key: 'ok', style: { color: entry.ok === true ? C.success : C.danger } }, entry.ok === true
+          ? t('auditOk')
+          : `${t('auditFail')}${typeof entry.error === 'string' && entry.error !== '' ? '：' + entry.error : ''}`),
+      ]))
+
+      return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, [
+        h('div', { key: 'bar', style: { display: 'flex', alignItems: 'center', gap: 8 } }, [
+          h('span', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t('auditTitle')),
+          h('span', { key: 'hint', style: { color: C.tertiary, fontSize: 11.5 } }, '~/.dsh/dsh-n8n-plugin.audit.log'),
+          h('span', { key: 'spacer', style: { flex: 1 } }),
+          audit.open ? h(Button, { key: 'refresh', variant: 'ghost', disabled: audit.status === 'loading', onClick: onRefresh }, t('auditRefresh')) : null,
+          h(Button, { key: 'toggle', variant: 'ghost', onClick: onToggle }, audit.open ? t('auditHide') : t('auditView')),
+        ]),
+        audit.open
+          ? h('div', {
+            key: 'list',
+            style: {
+              maxHeight: 240,
+              overflowY: 'auto',
+              padding: '6px 10px',
+              border: '1px solid ' + C.border,
+              borderRadius: 8,
+              background: C.layer3,
+            },
+          }, audit.status === 'loading'
+            ? h('p', { key: 'loading', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('loading'))
+            : audit.status === 'error'
+              ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12.5 } }, `${t('errorPrefix')}${audit.error ?? ''}`)
+              : audit.entries.length === 0
+                ? h('p', { key: 'empty', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('auditEmpty'))
+                : auditEntries)
+          : null,
+      ])
+    }
+
+    /** Instance health collapsible panel component. */
+    function HealthPanel({ health, t, onToggle, onRefresh }) {
+      const healthRowStyle = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'baseline',
+        gap: 8,
+        padding: '6px 0',
+        borderBottom: '1px solid ' + C.border,
+        fontSize: 12,
+        lineHeight: '18px',
+        color: C.secondary,
+      }
+      const healthRows = health.instances.map((item, index) => {
+        const key = item !== null && typeof item === 'object' && typeof item.alias === 'string' ? item.alias : String(index)
+        if (item === null || typeof item !== 'object') {
+          return h('div', { key, style: healthRowStyle }, '—')
+        }
+        const head = h('span', { key: 'alias', style: { color: C.primary, fontWeight: 500 } }, item.alias ?? '—')
+        if (item.ok !== true) {
+          return h('div', { key, style: healthRowStyle }, [
+            head,
+            h(Pill, { key: 'pill', tone: 'danger' }, t('healthUnreachable')),
+            h('span', { key: 'error', style: { color: C.danger, wordBreak: 'break-all' } }, String(item.error ?? '').slice(0, 140)),
+          ])
+        }
+        const workflows = item.workflows ?? {}
+        const executions = item.executions ?? {}
+        const counts = executions.counts ?? {}
+        const sampled = executions.sampled ?? 0
+        const success = counts.success ?? 0
+        const failed = (counts.error ?? 0) + (counts.crashed ?? 0)
+        const running = (counts.running ?? 0) + (counts.new ?? 0)
+        const other = Math.max(0, sampled - success - failed - running)
+        const rate = typeof executions.failureRate === 'number' ? executions.failureRate : null
+        const execText = sampled > 0
+          ? format(t('healthExecutions'), { ok: success, fail: failed, running })
+            + (other > 0 ? ` · ${format(t('healthExecutionsOther'), { count: other })}` : '')
+          : null
+        return h('div', { key, style: healthRowStyle }, [
+          head,
+          h(Pill, { key: 'latency', tone: 'neutral' }, `${item.latencyMs ?? 0}ms`),
+          h('span', { key: 'workflows' }, format(t('healthWorkflows'), {
+            total: `${workflows.total ?? 0}${workflows.truncated === true ? '+' : ''}`,
+            active: workflows.active ?? 0,
+          })),
+          execText === null
+            ? h('span', { key: 'noexec', style: { color: C.tertiary } }, t('healthNoExecutions'))
+            : h('span', { key: 'exec' }, execText),
+          rate !== null
+            ? h(Pill, {
+              key: 'rate',
+              tone: rate >= 0.3 ? 'danger' : rate >= 0.1 ? 'warn' : 'success',
+            }, format(t('healthFailureRate'), { rate: `${Math.round(rate * 100)}%` }))
+            : null,
+        ])
+      })
+
+      return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, [
+        h('div', { key: 'bar', style: { display: 'flex', alignItems: 'center', gap: 8 } }, [
+          h('span', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t('healthTitle')),
+          h('span', { key: 'hint', style: { color: C.tertiary, fontSize: 11.5 } }, t('healthHint')),
+          h('span', { key: 'spacer', style: { flex: 1 } }),
+          health.open ? h(Button, { key: 'refresh', variant: 'ghost', disabled: health.status === 'loading', onClick: onRefresh }, t('healthRefresh')) : null,
+          h(Button, { key: 'toggle', variant: 'ghost', onClick: onToggle }, health.open ? t('healthHide') : t('healthView')),
+        ]),
+        health.open
+          ? h('div', {
+            key: 'list',
+            style: {
+              maxHeight: 260,
+              overflowY: 'auto',
+              padding: '6px 10px',
+              border: '1px solid ' + C.border,
+              borderRadius: 8,
+              background: C.layer3,
+            },
+          }, health.status === 'loading'
+            ? h('p', { key: 'loading', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('loading'))
+            : health.status === 'error'
+              ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12.5 } }, `${t('errorPrefix')}${health.error ?? ''}`)
+              : health.instances.length === 0
+                ? h('p', { key: 'empty', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('healthEmpty'))
+                : healthRows)
+          : null,
+      ])
+    }
+
     /** The Settings section component. */
     function InstancesSection(props) {
-      const t = typeof props.t === 'function' ? props.t : fallbackT
+      const t = typeof props.t === 'function' ? props.t : defaultT
       const [state, setState] = useState({ status: 'loading', instances: [], defaultAlias: null, error: null })
       const [form, setForm] = useState(null)
       const [formError, setFormError] = useState(null)
@@ -624,281 +907,16 @@ window.__ModuleLoader__.load({
       } else if (state.instances.length === 0) {
         body = h('p', { style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('empty'))
       } else {
-        const headCells = [t('alias'), t('baseUrl'), t('apiKey'), t('defaultLabel'), t('actions')]
-        const head = h('tr', null, headCells.map((label, index) => h('th', {
-          key: label + index,
-          style: {
-            textAlign: index === 4 ? 'right' : 'left',
-            padding: '7px 8px',
-            borderBottom: '1px solid ' + C.border,
-            color: C.tertiary,
-            fontSize: 11.5,
-            fontWeight: 500,
-            whiteSpace: 'nowrap',
-          },
-        }, label)))
-        const rows = state.instances.map((instance) => {
-          const testState = tests[instance.alias]
-          const cells = [
-            h('td', { key: 'alias', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.primary } }, [
-              h('span', { key: 'a', style: { fontWeight: 500 } }, instance.alias),
-              testState !== undefined
-                ? h('div', { key: 't', style: { marginTop: 2 } }, h(Pill, {
-                  tone: testState.status === 'ok' ? 'success' : testState.status === 'fail' ? 'danger' : 'neutral',
-                }, testState.status === 'running' ? t('testing') : testState.status === 'ok' ? (testState.text ?? t('testOk')) : String(testState.text).slice(0, 120)))
-                : null,
-            ]),
-            h('td', { key: 'url', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, wordBreak: 'break-all' } }, instance.baseUrl),
-            h('td', { key: 'key', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, color: C.secondary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', wordBreak: 'break-all' } }, credentialCell(instance, t)),
-            h('td', { key: 'default', style: { padding: '8px', borderBottom: '1px solid ' + C.border, fontSize: 12.5, whiteSpace: 'nowrap' } }, [
-              instance.isDefault ? h(Pill, { key: 'default', tone: 'brand' }, t('defaultBadge')) : null,
-              instance.readOnly === true ? h(Pill, { key: 'readonly', tone: 'danger' }, t('readOnlyBadge')) : null,
-              !instance.isDefault && instance.readOnly !== true ? h('span', { key: 'none', style: { color: C.tertiary } }, t('emptyValue')) : null,
-            ]),
-            h('td', { key: 'actions', style: { padding: '8px', borderBottom: '1px solid ' + C.border, textAlign: 'right', whiteSpace: 'nowrap' } }, [
-              h(Button, { key: 'test', variant: 'ghost', disabled: busy || testState?.status === 'running', onClick: () => test(instance) }, t('test')),
-              h(Button, { key: 'edit', variant: 'ghost', disabled: busy, onClick: () => openEdit(instance) }, t('edit')),
-              h(Button, { key: 'delete', variant: 'danger', disabled: busy, onClick: () => remove(instance) }, t('delete')),
-            ]),
-          ]
-          return h('tr', { key: instance.alias }, cells)
+        body = h(InstanceTable, {
+          instances: state.instances,
+          tests,
+          busy,
+          t,
+          onTest: test,
+          onEdit: openEdit,
+          onDelete: remove,
         })
-        body = h('div', { style: { overflowX: 'auto' } }, h('table', {
-          style: { width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' },
-        }, [h('thead', { key: 'head' }, head), h('tbody', { key: 'body' }, rows)]))
       }
-
-      let editor = null
-      if (form !== null) {
-        editor = h('div', {
-          style: {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            padding: 14,
-            borderRadius: 10,
-            border: '1px solid ' + C.border,
-            background: C.layer3,
-          },
-        }, [
-          h('div', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t(form.mode === 'create' ? 'createTitle' : 'editTitle')),
-          h('div', { key: 'fields', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 } }, [
-            h(Field, { key: 'alias', label: t('alias'), hint: t('aliasHint') },
-              h(TextInput, {
-                value: form.alias,
-                placeholder: 'prod',
-                onChange: (event) => setForm({ ...form, alias: event.target.value }),
-              })),
-            h(Field, { key: 'url', label: t('baseUrl'), hint: t('baseUrlHint') },
-              h(TextInput, {
-                value: form.baseUrl,
-                placeholder: 'https://n8n.example.com',
-                onChange: (event) => setForm({ ...form, baseUrl: event.target.value }),
-              })),
-            h(Field, {
-              key: 'key',
-              label: t('apiKey'),
-              hint: form.mode === 'edit' && form.apiKeyMasked !== ''
-                ? format(t('apiKeyKeep'), { masked: form.apiKeyMasked })
-                : t('apiKeyHint'),
-            }, h(TextInput, {
-              value: form.apiKey,
-              type: 'password',
-              placeholder: form.mode === 'edit' ? '••••••••' : 'n8n_api_...',
-              autoComplete: 'new-password',
-              onChange: (event) => setForm({ ...form, apiKey: event.target.value }),
-            })),
-            h(Field, { key: 'keyEnv', label: t('apiKeyEnv'), hint: t('apiKeyEnvHint') },
-              h(TextInput, {
-                value: form.apiKeyEnv,
-                placeholder: 'N8N_PROD_KEY',
-                autoComplete: 'off',
-                onChange: (event) => setForm({ ...form, apiKeyEnv: event.target.value }),
-              })),
-            h(Field, { key: 'keyFile', label: t('apiKeyFile'), hint: t('apiKeyFileHint') },
-              h(TextInput, {
-                value: form.apiKeyFile,
-                placeholder: '~/.secrets/n8n-prod.key',
-                autoComplete: 'off',
-                onChange: (event) => setForm({ ...form, apiKeyFile: event.target.value }),
-              })),
-            h(Field, { key: 'desc', label: t('descriptionLabel') }, h(TextInput, {
-              value: form.description,
-              onChange: (event) => setForm({ ...form, description: event.target.value }),
-            })),
-          ]),
-          h('label', { key: 'readOnly', style: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: C.secondary } }, [
-            h('input', {
-              key: 'box',
-              type: 'checkbox',
-              checked: form.readOnly,
-              onChange: (event) => setForm({ ...form, readOnly: event.target.checked }),
-              style: { marginTop: 3 },
-            }),
-            h('span', { key: 'text' }, [
-              h('span', { key: 'label', style: { color: C.primary, fontWeight: 500 } }, t('readOnlyLabel')),
-              h('span', { key: 'hint', style: { display: 'block', color: C.tertiary, fontSize: 11.5 } }, t('readOnlyHint')),
-            ]),
-          ]),
-          h('label', { key: 'default', style: { display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: C.secondary } }, [
-            h('input', {
-              key: 'box',
-              type: 'checkbox',
-              checked: form.isDefault,
-              onChange: (event) => setForm({ ...form, isDefault: event.target.checked }),
-              style: { marginTop: 3 },
-            }),
-            h('span', { key: 'text' }, [
-              h('span', { key: 'label', style: { color: C.primary, fontWeight: 500 } }, t('defaultLabel')),
-              h('span', { key: 'hint', style: { display: 'block', color: C.tertiary, fontSize: 11.5 } }, t('defaultHint')),
-            ]),
-          ]),
-          formError !== null ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12, lineHeight: '17px', wordBreak: 'break-word' } }, `${t('errorPrefix')}${formError}`) : null,
-          h('div', { key: 'actions', style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } }, [
-            h(Button, { key: 'cancel', variant: 'ghost', onClick: closeForm, disabled: busy }, t('cancel')),
-            h(Button, { key: 'save', variant: 'primary', onClick: submit, disabled: busy }, busy ? t('saving') : t('save')),
-          ]),
-        ])
-      }
-
-      const auditTime = (ts) => (typeof ts === 'string' && ts.length >= 19 ? ts.slice(0, 19).replace('T', ' ') : '')
-      const auditEntries = audit.entries.map((entry, index) => h('div', {
-        key: index,
-        style: {
-          display: 'flex',
-          gap: 8,
-          flexWrap: 'wrap',
-          alignItems: 'baseline',
-          padding: '4px 0',
-          borderBottom: '1px solid ' + C.border,
-          fontSize: 12,
-          color: C.secondary,
-        },
-      }, [
-        h('span', { key: 'ts', style: { color: C.tertiary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', fontSize: 11.5 } }, auditTime(entry.ts)),
-        h('span', { key: 'actor', style: { color: C.tertiary } }, entry.actor === 'web' ? t('auditActorWeb') : t('auditActorAgent')),
-        h('span', { key: 'what', style: { color: C.primary, fontWeight: 500 } }, entry.tool ?? entry.action ?? ''),
-        entry.alias !== undefined ? h('span', { key: 'alias' }, entry.alias) : null,
-        entry.target !== undefined && entry.target !== '' ? h('span', { key: 'target', style: { color: C.tertiary, fontFamily: 'var(--dsw-font-mono, ui-monospace, monospace)', fontSize: 11.5, wordBreak: 'break-all' } }, entry.target) : null,
-        h('span', { key: 'ok', style: { color: entry.ok === true ? C.success : C.danger } }, entry.ok === true
-          ? t('auditOk')
-          : `${t('auditFail')}${typeof entry.error === 'string' && entry.error !== '' ? '：' + entry.error : ''}`),
-      ]))
-
-      const auditSection = h('div', { key: 'audit', style: { display: 'flex', flexDirection: 'column', gap: 8 } }, [
-        h('div', { key: 'bar', style: { display: 'flex', alignItems: 'center', gap: 8 } }, [
-          h('span', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t('auditTitle')),
-          h('span', { key: 'hint', style: { color: C.tertiary, fontSize: 11.5 } }, '~/.dsh/dsh-n8n-plugin.audit.log'),
-          h('span', { key: 'spacer', style: { flex: 1 } }),
-          audit.open ? h(Button, { key: 'refresh', variant: 'ghost', disabled: audit.status === 'loading', onClick: loadAudit }, t('auditRefresh')) : null,
-          h(Button, { key: 'toggle', variant: 'ghost', onClick: viewAudit }, audit.open ? t('auditHide') : t('auditView')),
-        ]),
-        audit.open
-          ? h('div', {
-            key: 'list',
-            style: {
-              maxHeight: 240,
-              overflowY: 'auto',
-              padding: '6px 10px',
-              border: '1px solid ' + C.border,
-              borderRadius: 8,
-              background: C.layer3,
-            },
-          }, audit.status === 'loading'
-            ? h('p', { key: 'loading', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('loading'))
-            : audit.status === 'error'
-              ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12.5 } }, `${t('errorPrefix')}${audit.error ?? ''}`)
-              : audit.entries.length === 0
-                ? h('p', { key: 'empty', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('auditEmpty'))
-                : auditEntries)
-          : null,
-      ])
-
-      // One health row per instance; a failed instance keeps its own entry.
-      const healthRowStyle = {
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'baseline',
-        gap: 8,
-        padding: '6px 0',
-        borderBottom: '1px solid ' + C.border,
-        fontSize: 12,
-        lineHeight: '18px',
-        color: C.secondary,
-      }
-      const healthRows = health.instances.map((item, index) => {
-        const key = item !== null && typeof item === 'object' && typeof item.alias === 'string' ? item.alias : String(index)
-        if (item === null || typeof item !== 'object') {
-          return h('div', { key, style: healthRowStyle }, '—')
-        }
-        const head = h('span', { key: 'alias', style: { color: C.primary, fontWeight: 500 } }, item.alias ?? '—')
-        if (item.ok !== true) {
-          return h('div', { key, style: healthRowStyle }, [
-            head,
-            h(Pill, { key: 'pill', tone: 'danger' }, t('healthUnreachable')),
-            h('span', { key: 'error', style: { color: C.danger, wordBreak: 'break-all' } }, String(item.error ?? '').slice(0, 140)),
-          ])
-        }
-        const workflows = item.workflows ?? {}
-        const executions = item.executions ?? {}
-        const counts = executions.counts ?? {}
-        const sampled = executions.sampled ?? 0
-        const success = counts.success ?? 0
-        const failed = (counts.error ?? 0) + (counts.crashed ?? 0)
-        const running = (counts.running ?? 0) + (counts.new ?? 0)
-        const other = Math.max(0, sampled - success - failed - running)
-        const rate = typeof executions.failureRate === 'number' ? executions.failureRate : null
-        const execText = sampled > 0
-          ? format(t('healthExecutions'), { ok: success, fail: failed, running })
-            + (other > 0 ? ` · ${format(t('healthExecutionsOther'), { count: other })}` : '')
-          : null
-        return h('div', { key, style: healthRowStyle }, [
-          head,
-          h(Pill, { key: 'latency', tone: 'neutral' }, `${item.latencyMs ?? 0}ms`),
-          h('span', { key: 'workflows' }, format(t('healthWorkflows'), {
-            total: `${workflows.total ?? 0}${workflows.truncated === true ? '+' : ''}`,
-            active: workflows.active ?? 0,
-          })),
-          execText === null
-            ? h('span', { key: 'noexec', style: { color: C.tertiary } }, t('healthNoExecutions'))
-            : h('span', { key: 'exec' }, execText),
-          rate !== null
-            ? h(Pill, {
-              key: 'rate',
-              tone: rate >= 0.3 ? 'danger' : rate >= 0.1 ? 'warn' : 'success',
-            }, format(t('healthFailureRate'), { rate: `${Math.round(rate * 100)}%` }))
-            : null,
-        ])
-      })
-
-      const healthSection = h('div', { key: 'health', style: { display: 'flex', flexDirection: 'column', gap: 8 } }, [
-        h('div', { key: 'bar', style: { display: 'flex', alignItems: 'center', gap: 8 } }, [
-          h('span', { key: 'title', style: { fontSize: 13, fontWeight: 600, color: C.primary } }, t('healthTitle')),
-          h('span', { key: 'hint', style: { color: C.tertiary, fontSize: 11.5 } }, t('healthHint')),
-          h('span', { key: 'spacer', style: { flex: 1 } }),
-          health.open ? h(Button, { key: 'refresh', variant: 'ghost', disabled: health.status === 'loading', onClick: loadHealth }, t('healthRefresh')) : null,
-          h(Button, { key: 'toggle', variant: 'ghost', onClick: viewHealth }, health.open ? t('healthHide') : t('healthView')),
-        ]),
-        health.open
-          ? h('div', {
-            key: 'list',
-            style: {
-              maxHeight: 260,
-              overflowY: 'auto',
-              padding: '6px 10px',
-              border: '1px solid ' + C.border,
-              borderRadius: 8,
-              background: C.layer3,
-            },
-          }, health.status === 'loading'
-            ? h('p', { key: 'loading', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('loading'))
-            : health.status === 'error'
-              ? h('p', { key: 'error', style: { margin: 0, color: C.danger, fontSize: 12.5 } }, `${t('errorPrefix')}${health.error ?? ''}`)
-              : health.instances.length === 0
-                ? h('p', { key: 'empty', style: { margin: 0, color: C.tertiary, fontSize: 12.5 } }, t('healthEmpty'))
-                : healthRows)
-          : null,
-      ])
 
       return h('div', {
         style: {
@@ -916,9 +934,11 @@ window.__ModuleLoader__.load({
           ? h('p', { key: 'notice', style: { margin: 0, color: C.success, fontSize: 12, lineHeight: '17px' } }, notice)
           : null,
         h('div', { key: 'body' }, body),
-        auditSection,
-        healthSection,
-        editor,
+        h(AuditPanel, { key: 'audit', audit, t, onToggle: viewAudit, onRefresh: loadAudit }),
+        h(HealthPanel, { key: 'health', health, t, onToggle: viewHealth, onRefresh: loadHealth }),
+        form !== null
+          ? h(InstanceEditor, { key: 'editor', form, formError, busy, t, onChange: setForm, onClose: closeForm, onSubmit: submit })
+          : null,
       ])
     }
 
@@ -941,9 +961,10 @@ window.__ModuleLoader__.load({
       } catch {
         // A locale-less shell keeps the built-in Chinese copy.
       }
+      let labelT = defaultT
       try {
-        const t = ctx.locale.bind(NS)
-        fallbackT = (key) => t(key)
+        const bound = ctx.locale.bind(NS)
+        labelT = (key) => bound(key)
       } catch {
         // keep the zh fallback
       }
@@ -954,7 +975,7 @@ window.__ModuleLoader__.load({
               name: 'settings.section',
               id: NS,
               order: SECTION_ORDER,
-              label: () => fallbackT('title'),
+              label: () => labelT('title'),
               locale: NS,
             }, InstancesSection)
           } catch (error) {
