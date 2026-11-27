@@ -223,16 +223,19 @@ window.__ModuleLoader__.load({
       return body ?? {}
     }
 
+    /** Shared headers for all plugin management API calls (CSRF fence). */
+    const API_HEADERS = { 'x-dsh-n8n-client': '1' }
+
     /** Load the instance registry. */
     async function fetchInstances() {
-      return readJson(await fetch(API.instances, { headers: { accept: 'application/json' } }))
+      return readJson(await fetch(API.instances, { headers: { ...API_HEADERS, accept: 'application/json' } }))
     }
 
     /** Create one instance. */
     async function createInstance(payload) {
       return readJson(await fetch(API.instances, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { ...API_HEADERS, 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       }))
     }
@@ -241,21 +244,24 @@ window.__ModuleLoader__.load({
     async function updateInstance(alias, payload) {
       return readJson(await fetch(`${API.instances}?alias=${encodeURIComponent(alias)}`, {
         method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
+        headers: { ...API_HEADERS, 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       }))
     }
 
     /** Delete one instance. */
     async function deleteInstance(alias) {
-      return readJson(await fetch(`${API.instances}?alias=${encodeURIComponent(alias)}`, { method: 'DELETE' }))
+      return readJson(await fetch(`${API.instances}?alias=${encodeURIComponent(alias)}`, {
+        method: 'DELETE',
+        headers: API_HEADERS,
+      }))
     }
 
     /** Test one instance's connectivity and credentials. */
     async function testInstance(alias) {
       return readJson(await fetch(API.test, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { ...API_HEADERS, 'content-type': 'application/json' },
         body: JSON.stringify({ alias }),
       }))
     }
@@ -427,7 +433,7 @@ window.__ModuleLoader__.load({
       const loadAudit = useCallback(async () => {
         setAudit((current) => ({ ...current, status: 'loading', error: null }))
         try {
-          const body = await readJson(await fetch(`${API.audit}?limit=50`, { headers: { accept: 'application/json' } }))
+          const body = await readJson(await fetch(`${API.audit}?limit=50`, { headers: { ...API_HEADERS, accept: 'application/json' } }))
           setAudit({ open: true, status: 'ready', entries: Array.isArray(body.entries) ? body.entries : [], error: null })
         } catch (error) {
           setAudit((current) => ({ ...current, open: true, status: 'error', error: String(error instanceof Error ? error.message : error) }))
@@ -447,7 +453,7 @@ window.__ModuleLoader__.load({
       const loadHealth = useCallback(async () => {
         setHealth((current) => ({ ...current, status: 'loading', error: null }))
         try {
-          const body = await readJson(await fetch(API.health, { headers: { accept: 'application/json' } }))
+          const body = await readJson(await fetch(API.health, { headers: { ...API_HEADERS, accept: 'application/json' } }))
           setHealth((current) => ({
             ...current,
             open: true,
