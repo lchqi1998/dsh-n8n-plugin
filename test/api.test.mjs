@@ -215,6 +215,11 @@ test('every registered tool is named in the guidance', () => {
   const { tools } = makeToolHarness()
   assert.equal(tools.length, 25)
   assert.deepEqual(tools.map(tool => tool.name), N8N_TOOL_NAMES)
+  for (const tool of tools) {
+    for (const [param, def] of Object.entries(tool.parameters ?? {})) {
+      assert.ok(def.required === undefined || def.required === true, `${tool.name}.parameters.${param}.required must be true or omitted`)
+    }
+  }
 })
 
 test('clone tool defaults copyTags to true and warns about shared webhook paths', async () => {
